@@ -2,8 +2,12 @@
 # -*- coding: utf-8 -*-
 import json
 
-from flask import Flask, render_template, request
-import peewee
+try:
+    from flask import Flask, render_template, request
+    import peewee
+except ImportError as e:
+    print("Peewee and flask package required for server feature.")
+    raise e
 
 from .job import DataJob
 from .exception import NoExtractorError

@@ -11,11 +11,16 @@
     {% endfor %}
     </ul>
     <h2>TAG</h2>
-    {% set splitted_tag = data[2].tags.split(',') %}
-    <ul>
-      {% for tag in splitted_tag  %}
-        <li class="tag-type-general">{{tag}}</li>
-      {% endfor %}
+    {% if data[2].tags %}
+      {% set splitted_tag = data[2].tags.split(',') %}
+      <ul>
+        {% for tag in splitted_tag  %}
+          <li class="tag-type-general">{{tag}}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+    <p> No tag found.</p>
+    {% endif %}
   </div>
   <div clas="col-md-7"><img id="main_image" src="{{data[1]}}"></div>
 </div>

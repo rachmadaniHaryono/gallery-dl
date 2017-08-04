@@ -81,6 +81,9 @@ setup(
     install_requires=[
         "requests >= 2.4.2",
     ],
+    extras_require={
+        'server':  ["peewee>=2.10.1", "Flask>=0.12.2"],
+    }
     packages=[
         "gallery_dl",
         "gallery_dl.extractor",

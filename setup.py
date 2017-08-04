@@ -55,7 +55,8 @@ elif has_setuptools:
     params = {
         "entry_points": {
             "console_scripts": [
-                "gallery-dl = gallery_dl:main"
+                "gallery-dl = gallery_dl:main",
+                "gallery-dl-server = gallery_dl.server:main",
             ]
         }
     }

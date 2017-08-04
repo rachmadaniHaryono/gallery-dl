@@ -14,9 +14,9 @@
     {% set splitted_tag = data[2].tags.split(',') %}
     <ul>
       {% for tag in splitted_tag  %}
-        <li>{{tag}}</li>
+        <li class="tag-type-general">{{tag}}</li>
       {% endfor %}
   </div>
-  <div clas="col-md-7"><img src="{{data[1]}}"></div>
+  <div clas="col-md-7"><img id="main_image" src="{{data[1]}}"></div>
 </div>
 {% endblock %}

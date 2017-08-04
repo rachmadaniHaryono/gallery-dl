@@ -16,10 +16,12 @@
     {% if entries %}
       <div class="card-columns">
         {% for entry in entries %}
-        <div class="card thumb">
-          <a href="{{url_for('gallery')}}?data={{entry|tojson|urlencode}}">
-            <img class="card-img-top img-fluid" src="{{entry[1]}}" alt="image">
-          </a>
+        <div class="card">
+          <span class="thumb">
+            <a href="{{url_for('gallery')}}?data={{entry|tojson|urlencode}}">
+              <img class="card-img-top img-fluid" src="{{entry[1]}}" alt="image">
+            </a>
+          </span>
         </div>
         {% endfor %}
       </div>

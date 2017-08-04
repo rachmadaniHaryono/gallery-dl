@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+#rtist -*- coding: utf-8 -*-
 
 # Copyright 2016-2017 Mike Fährmann
 #

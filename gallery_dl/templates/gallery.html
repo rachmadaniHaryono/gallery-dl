@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid row">
+  <div class="col-lg-3 colg-lg-offset-2">
+    <h2>INFO</h2>
+    <ul>
+    {% for key, value in data[2].items() %}
+      {% if key != 'tags' %}
+        <li>{{key}} : {{value}}</li>
+      {% endif %}
+    {% endfor %}
+    </ul>
+    <h2>TAG</h2>
+    {% set splitted_tag = data[2].tags.split(',') %}
+    <ul>
+      {% for tag in splitted_tag  %}
+        <li>{{tag}}</li>
+      {% endfor %}
+  </div>
+  <div clas="col-md-7"><img src="{{data[1]}}"></div>
+</div>
+{% endblock %}

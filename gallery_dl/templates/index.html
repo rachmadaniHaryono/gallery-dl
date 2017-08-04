@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <form action="/" method="GET">
+    <div>
+      <label for="url">URL</label>
+      <input class="col-lg-10 col-lg-offset-4 input-lg" type="url" class="form-control" id="url" placeholder="URL" name="url">
+      <input class="btn btn-default" type="submit" value="Submit">
+    </div>
+  </form>
+  {% if  url_input %}
+    <p> Found {{ entries|length }} Result(s) from <a href="{{ url_input }}">{{ url_input }}</a>
+    {% if error %}
+      <div class="alert alert-danger" role="alert"><strong>ERROR</strong> : {{error}}</div>
+    {% endif %}
+    {% if entries %}
+      <div class="card-columns">
+        {% for entry in entries %}
+        <div class="card thumb">
+          <a href="{{url_for('gallery')}}?data={{entry|tojson|urlencode}}"<img class="card-img-top img-fluid" src="{{entry[1]}}" alt="image">
+        </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

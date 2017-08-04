@@ -1,4 +1,4 @@
-==========
+G==========
 gallery-dl
 ==========
 
@@ -206,6 +206,16 @@ You will be sent to the site's authorization page and asked to grant read
 access to *gallery-dl*. Authorize it and you will he shown one or more
 "tokens", which should be added to your configuration file.
 
+Server
+======
+
+To enable server feature of gallery-dl, you have to install the required package.
+
+.. code:: bash
+
+    $ pip install gallery-dl[server]
+
+After that you can visit the server (default on 127.0.0.1:5000)
 
 .. _gallery-dl.conf:       https://github.com/mikf/gallery-dl/blob/master/docs/gallery-dl.conf
 .. _configuration.rst:     https://github.com/mikf/gallery-dl/blob/master/docs/configuration.rst

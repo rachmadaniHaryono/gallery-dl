@@ -40,7 +40,7 @@ class Gallery(Model):
     @staticmethod
     def save_from_dataset(dataset, src_url):
         dataset_info = dataset[2]
-        image_id = dataset_info.pop('image-id')
+        image_id = dataset_info.pop('image-id', None)
         obj = Gallery(
             src_url=src_url, index=dataset[0], url=dataset[1], imagee_id=image_id, **dataset_info)
         obj.save()

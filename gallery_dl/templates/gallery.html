@@ -1,10 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container-fluid">
-  <ul>
-    {% for entry in entries %}
-      <li>{{entry.url.value}}</li>
+  {% for entry_group in entries|batch(6) %}
+    <div class="card-deck">
+    {% for entry in entry_group %}
+      {% if not entry.is_video() %}
+        <div class="card col-lg-2">
+          <a class="mx-auto"><img class="card-img-top" style="max-width:235px;max-height:180px"src="{{entry.get_resized_img_url()}}" alt="Card image cap"></a>
+          <div class="card-block">
+            <p class="card-text"><a href="{{entry.url.value}}">link</a></p>
+          </div>
+        </div>
+      {% endif %}
     {% endfor %}
-  </ul>
+    </div>
+    <br>
+  {% endfor %}
 </div>
 {% endblock %}

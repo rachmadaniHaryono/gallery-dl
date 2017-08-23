@@ -239,6 +239,8 @@ def gallery(gallery_id=None, page=1):
     """Get gallery."""
     no_cache = int(request.args.get('no-cache', 0)) == 1
     item_per_page = 36
+    page_func = partial(url_for, 'gallery', gallery_id=gallery_id)
+
     gallery_m = models.Gallery.get(id=gallery_id)
     posts_q = \
         Post.select() \
@@ -246,7 +248,6 @@ def gallery(gallery_id=None, page=1):
     entries = [x for x in posts_q if not x.is_video()]
     video_entries = [x for x in posts_q if x.is_video()]
     if posts_q.exists() and not no_cache:
-        page_func = partial(url_for, 'gallery', gallery_id=gallery_id)
         total_count = \
             Post.select().where(models.Post.gallery == gallery_m).count()
         pagination = Pagination(
@@ -270,9 +271,13 @@ def gallery(gallery_id=None, page=1):
         except AttributeError:
             gallery_m.metadata = job.gallery_data
         gallery_m.save()
-        entries = list(get_post(job=job, gallery_m=gallery_m))[:item_per_page]
+        posts = list(get_post(job=job, gallery_m=gallery_m))
+        entries = posts[:item_per_page]
+        pagination = Pagination(page, item_per_page, len(posts), page_func)
         return render_template(
-            'gallery.html', entries=entries, url_input=gallery_m.url.value)
+            'gallery.html', entries=entries, url_input=gallery_m.url.value,
+            pagination=pagination
+        )
     except NoExtractorError:
         flash(
             'No Extractor found for {}.'.format(gallery_m.url.value), 'error')

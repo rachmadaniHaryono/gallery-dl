@@ -9,6 +9,7 @@ module is separated into following section
 - route function
 - main function
 """
+from functools import partial
 from math import ceil
 from urllib.parse import urljoin, urlparse
 import logging
@@ -66,7 +67,7 @@ class CustomJob(Job):
 class BlogLivedoorJpExtractor(Extractor):
     """Extract from blog.livedoor.jp."""
 
-    regex = r'https?:\/\/blog.livedoor.jp\/.*'
+    pattern = [r'https?:\/\/blog.livedoor.jp\/.*']
 
     def __init__(self, match):
         """Init method."""
@@ -99,7 +100,7 @@ class BlogLivedoorJpExtractor(Extractor):
 class TheEyeExtractor(Extractor):
     """Extract from the-eye.eu."""
 
-    regex = r'https?:\/\/the-eye\.eu\/public\/ripreddit\/.*'
+    pattern = [r'https?:\/\/the-eye\.eu\/public\/ripreddit\/.*']
 
     def __init__(self, match):
         """Init method."""
@@ -125,11 +126,12 @@ class TheEyeExtractor(Extractor):
 class Pagination(object):
     """Pagination obj."""
 
-    def __init__(self, page, per_page, total_count):
+    def __init__(self, page, per_page, total_count, page_func):
         """Init method."""
         self.page = page
         self.per_page = per_page
         self.total_count = total_count
+        self.page_func = page_func
 
     @property
     def pages(self):
@@ -150,7 +152,7 @@ class Pagination(object):
                    right_current=5, right_edge=2):
         """Generate page number."""
         last = 0
-        for num in xrange(1, self.pages + 1):
+        for num in range(1, self.pages + 1):
             if num <= left_edge or \
                (num > self.page - left_current - 1 and
                 num < self.page + right_current) or \
@@ -159,6 +161,10 @@ class Pagination(object):
                     yield None
                 yield num
                 last = num
+
+    def get_page_url(self, page):
+        """Get page url."""
+        return self.page_func(page=page)
 
 
 def init_db():
@@ -240,14 +246,20 @@ def gallery(gallery_id=None, page=1):
     entries = [x for x in posts_q if not x.is_video()]
     video_entries = [x for x in posts_q if x.is_video()]
     if posts_q.exists() and not no_cache:
+        page_func = partial(url_for, 'gallery', gallery_id=gallery_id)
+        total_count = \
+            Post.select().where(models.Post.gallery == gallery_m).count()
+        pagination = Pagination(
+            page, item_per_page, total_count, page_func)
         return render_template(
             'gallery.html', entries=entries, video_entries=video_entries,
+            pagination=pagination,
             url_input=gallery_m.url.value)
     try:
         extr_objs = [TheEyeExtractor, BlogLivedoorJpExtractor]
         for obj in extr_objs:
             for regex_str in obj.pattern:
-                extractor._cache.extend((
+                extractor._cache.append((
                     re.compile(regex_str),
                     obj
                 ))

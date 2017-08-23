@@ -1,8 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
+<form action="/" method="GET">
+  <div>
+    <label for="url">URL</label>
+    <input class="col-lg-10 col-lg-offset-4 input-lg" type="url" class="form-control" id="url" placeholder="URL" name="url">
+    <input class="btn btn-default" type="submit" value="Submit">
+  </div>
+</form>
 <div class="container-fluid">
   {% for entry_group in entries|batch(6) %}
-    <div class="card-deck">
+    <div class="card-group">
     {% for entry in entry_group %}
       {% if not entry.is_video() %}
         <div class="card col-lg-2">
@@ -14,7 +21,34 @@
       {% endif %}
     {% endfor %}
     </div>
-    <br>
   {% endfor %}
 </div>
+<br />
+{{ render_pagination(pagination) }}
 {% endblock %}
+
+{% macro render_pagination(pagination) %}
+<div class="mx-auto" style="width: 200px;">
+  <nav aria-label="Page navigation">
+    <ul class="pagination">
+      {% if pagination.has_prev %}
+        <li class="page-item"> <a href="{{ pagination.get_page_url(pagination.page -1) }}" class="page-link">&laquo; Previous</a> </li>
+      {% endif %}
+      {% for page in pagination.iter_pages() %}
+        {% if page %}
+          {% if page != pagination.page %}
+            <li class="page-item"> <a href="{{ pagination.get_page_url(page) }}" class="page-link">{{ page }}</a> </li>
+          {% else %}
+            <li class="page-item active"> <a class="page-link" href="#">{{page}} <span class="sr-only">(current)</span></a> </li>
+          {% endif %}
+        {% else %}
+          <li class="page-item"> <span class=ellipsis>…</span> </li>
+        {% endif %}
+      {%- endfor %}
+      {% if pagination.has_next %}
+        <li class="page-item"> <a href="{{ pagination.get_page_url(pagination.page + 1) }}" class="page-link">Next &raquo;</a> </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+{% endmacro %}

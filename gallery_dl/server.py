@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Server module."""
+"""Server module.
+
+module is separated into following section
+
+- class
+- function
+- route function
+- main function
+"""
 from urllib.parse import urljoin, urlparse
 import logging
 import re
@@ -149,17 +157,6 @@ def get_or_create_posts(url_input, no_cache=False):
         yield post_metadata_m, is_created
 
 
-@app.route('/')
-def index():
-    """Get index page."""
-    url_input = request.args.get('url', None)
-    if url_input is None:
-        return render_template('index.html')
-    url_input_m, _ = Url.get_or_create(value=url_input)
-    gallery_m, _ = Gallery.get_or_create(url=url_input_m)
-    return redirect(url_for('gallery', gallery_id=gallery_m.id))
-
-
 def get_post(job, gallery_m):
     """Get post from job and gallery_model."""
     for idx, item in enumerate(job.images):
@@ -175,6 +172,17 @@ def get_post(job, gallery_m):
                 post_metadata_m.metadata = img_metadata
             post_metadata_m.save()
         yield post_m
+
+
+@app.route('/')
+def index():
+    """Get index page."""
+    url_input = request.args.get('url', None)
+    if url_input is None:
+        return render_template('index.html')
+    url_input_m, _ = Url.get_or_create(value=url_input)
+    gallery_m, _ = Gallery.get_or_create(url=url_input_m)
+    return redirect(url_for('gallery', gallery_id=gallery_m.id))
 
 
 @app.route('/g/', defaults={'page': 1, "gallery_id": None})
@@ -196,14 +204,13 @@ def gallery(gallery_id=None, page=1):
             'gallery.html', entries=entries, video_entries=video_entries,
             url_input=gallery_m.url.value)
     try:
-        add_extr_cache_entry = [
-            (re.compile(TheEyeExtractor.regex), TheEyeExtractor),
-            (
-                re.compile(BlogLivedoorJpExtractor.regex),
-                BlogLivedoorJpExtractor
-            ),
-        ]
-        extractor._cache.extend(add_extr_cache_entry)
+        extr_objs = [TheEyeExtractor, BlogLivedoorJpExtractor]
+        for obj in extr_objs:
+            for regex_str in obj.pattern:
+                extractor._cache.extend((
+                    re.compile(regex_str),
+                    obj
+                ))
         job = CustomJob(gallery_m.url.value)
         job.run()
         try:
@@ -240,6 +247,7 @@ def main():
     """Get main function."""
     init_db()
 
+    # logging
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
     ch = logging.StreamHandler(sys.stdout)
@@ -248,6 +256,7 @@ def main():
     formatter = logging.Formatter(log_fmt)
     ch.setFormatter(formatter)
     root.addHandler(ch)
+
     app_run_kwargs = {'debug': True}
     app.run(**app_run_kwargs)
 

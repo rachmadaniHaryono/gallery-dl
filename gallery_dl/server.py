@@ -16,6 +16,7 @@ import logging
 import re
 import sys
 import os
+import time
 
 from bs4 import BeautifulSoup
 try:
@@ -76,11 +77,14 @@ class BlogLivedoorJpExtractor(Extractor):
 
     def items(self):
         """Get items."""
+        delay_per_request = 5
         resp = self.session.get(self.match.group())
         soup = BeautifulSoup(resp.content, 'html.parser')
+        time.sleep(delay_per_request)
         hrefs = [
             x.attrs.get('href')
             for x in soup.select('a') if x.attrs.get('href').endswith('html')]
+        yield Message.Directory, {'hrefs': hrefs}
         valid_hrefs = []
         for href in hrefs:
             basename = os.path.splitext(os.path.basename(href))[0]
@@ -89,6 +93,7 @@ class BlogLivedoorJpExtractor(Extractor):
         invalid_netlocs = ['parts.blog.livedoor.jp', 't.blog.livedoor.jp']
         for href in valid_hrefs:
             soup = BeautifulSoup(self.session.get(href).content, 'html.parser')
+            time.sleep(delay_per_request)
             for img_tag in soup.select('img'):
                 img_src = img_tag.attrs.get('src')
                 parsed_url = urlparse(img_src)
@@ -247,7 +252,7 @@ def gallery(gallery_id=None, page=1):
         .where(models.Post.gallery == gallery_m).paginate(page, item_per_page)
     entries = [x for x in posts_q if not x.is_video()]
     video_entries = [x for x in posts_q if x.is_video()]
-    if posts_q.exists() and not no_cache:
+    if posts_q.exists() and not no_cache and entries:
         total_count = \
             Post.select().where(models.Post.gallery == gallery_m).count()
         pagination = Pagination(

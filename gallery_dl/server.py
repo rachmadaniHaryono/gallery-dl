@@ -55,7 +55,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 def run():
     bind = config.get(("server", "bind"), "127.0.0.1")
-    port = config.get(("server", "port"), 6412)
+    port = int(config.get(("server", "port"), 6412))
     httpd = HTTPServer((bind, port), RequestHandler)
 
     try:

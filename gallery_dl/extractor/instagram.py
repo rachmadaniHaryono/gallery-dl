@@ -9,13 +9,16 @@
 
 """Extractors for https://www.instagram.com/"""
 
-from .common import Extractor, Message
-from .. import text, exception
-from ..cache import cache
 import itertools
 import json
-import time
 import re
+import time
+
+import tqdm
+
+from .. import exception, text
+from ..cache import cache
+from .common import Extractor, Message
 
 
 class InstagramExtractor(Extractor):
@@ -41,7 +44,7 @@ class InstagramExtractor(Extractor):
 
         videos = self.config("videos", True)
         metadata = self.get_metadata()
-        for data in self.instagrams():
+        for data in tqdm.tqdm(self.instagrams()):
             data.update(metadata)
             yield Message.Directory, data
 

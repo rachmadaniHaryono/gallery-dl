@@ -7,7 +7,7 @@
 # published by the Free Software Foundation.
 
 """Extractors for https://www.reddit.com/"""
-
+import tqdm 
 from .common import Extractor, Message
 from .. import text, util, exception
 from ..cache import cache
@@ -43,7 +43,7 @@ class RedditExtractor(Extractor):
         while True:
             extra = []
 
-            for submission, comments in submissions:
+            for submission, comments in tqdm.tqdm(submissions):
                 urls = []
 
                 if submission:

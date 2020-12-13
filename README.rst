@@ -2,8 +2,8 @@
 gallery-dl
 ==========
 
-*gallery-dl* is a command-line program to download image-galleries and
--collections from several image hosting sites (see `Supported Sites`_).
+*gallery-dl* is a command-line program to download image galleries and
+collections from several image hosting sites (see `Supported Sites`_).
 It is a cross-platform tool with many configuration options
 and powerful filenaming capabilities.
 
@@ -35,14 +35,14 @@ easily installed or upgraded using pip_:
 
 .. code:: bash
 
-    $ python3 -m pip install --upgrade gallery-dl
+    $ python3 -m pip install -U gallery-dl
 
-Installing the latest dev-version directly from GitHub can be done with
+Installing the latest dev version directly from GitHub can be done with
 pip_ as well:
 
 .. code:: bash
 
-    $ python3 -m pip install --upgrade https://github.com/mikf/gallery-dl/archive/master.tar.gz
+    $ python3 -m pip install -U -I --no-deps --no-cache-dir https://github.com/mikf/gallery-dl/archive/master.tar.gz
 
 Note: Windows users should use :code:`py -3` instead of :code:`python3`.
 
@@ -83,10 +83,10 @@ Download a standalone executable file,
 put it into your `PATH <https://en.wikipedia.org/wiki/PATH_(variable)>`__,
 and run it inside a command prompt (like ``cmd.exe``).
 
-- `Windows <https://github.com/mikf/gallery-dl/releases/download/v1.15.4/gallery-dl.exe>`__
-- `Linux   <https://github.com/mikf/gallery-dl/releases/download/v1.15.4/gallery-dl.bin>`__
+- `Windows <https://github.com/mikf/gallery-dl/releases/download/v1.16.0/gallery-dl.exe>`__
+- `Linux   <https://github.com/mikf/gallery-dl/releases/download/v1.16.0/gallery-dl.bin>`__
 
-These executables include a Python 3.8 interpreter
+These executables include a Python interpreter
 and all required Python packages.
 
 
@@ -181,19 +181,22 @@ Configuration files for *gallery-dl* use a JSON-based file format.
   see gallery-dl-example.conf_.
 | A list of all available configuration options and their
   descriptions can be found in configuration.rst_.
+|
 
 *gallery-dl* searches for configuration files in the following places:
 
-+--------------------------------------------+------------------------------------------+
-| Linux                                      | Windows                                  |
-+--------------------------------------------+------------------------------------------+
-|* ``/etc/gallery-dl.conf``                  |* ``%APPDATA%\gallery-dl\config.json``    |
-|* ``${HOME}/.config/gallery-dl/config.json``|* ``%USERPROFILE%\gallery-dl\config.json``|
-|* ``${HOME}/.gallery-dl.conf``              |* ``%USERPROFILE%\gallery-dl.conf``       |
-+--------------------------------------------+------------------------------------------+
+Windows:
+    * ``%APPDATA%\gallery-dl\config.json``
+    * ``%USERPROFILE%\gallery-dl\config.json``
+    * ``%USERPROFILE%\gallery-dl.conf``
 
-(``%USERPROFILE%`` usually refers to the user's home directory,
-i.e. ``C:\Users\<username>\``)
+    (``%USERPROFILE%`` usually refers to the user's home directory,
+    i.e. ``C:\Users\<username>\``)
+
+Linux, macOS, etc.:
+    * ``/etc/gallery-dl.conf``
+    * ``${HOME}/.config/gallery-dl/config.json``
+    * ``${HOME}/.gallery-dl.conf``
 
 Values in later configuration files will override previous ones.
 
@@ -317,7 +320,7 @@ access to *gallery-dl*. Authorize it and you will be shown one or more
 .. _gallery-dl-example.conf: https://github.com/mikf/gallery-dl/blob/master/docs/gallery-dl-example.conf
 .. _configuration.rst:       https://github.com/mikf/gallery-dl/blob/master/docs/configuration.rst
 .. _Supported Sites:         https://github.com/mikf/gallery-dl/blob/master/docs/supportedsites.rst
-.. _stable:                  https://github.com/mikf/gallery-dl/archive/v1.15.4.tar.gz
+.. _stable:                  https://github.com/mikf/gallery-dl/archive/v1.16.0.tar.gz
 .. _dev:                     https://github.com/mikf/gallery-dl/archive/master.tar.gz
 
 .. _Python:     https://www.python.org/downloads/

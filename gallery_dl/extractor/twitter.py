@@ -12,6 +12,7 @@ from .common import Extractor, Message
 from .. import text, util, exception
 from ..cache import cache
 import json
+import tqdm
 
 BASE_PATTERN = (
     r"(?:https?://)?(?:www\.|mobile\.)?"
@@ -44,7 +45,7 @@ class TwitterExtractor(Extractor):
         metadata = self.metadata()
         yield Message.Version, 1
 
-        for tweet in self.tweets():
+        for tweet in tqdm.tqdm(self.tweets()):
 
             if not self.retweets and "retweeted_status_id_str" in tweet:
                 self.log.debug("Skipping %s (retweet)", tweet["id_str"])

@@ -9,9 +9,6 @@
 
 """Extractors for https://www.instagram.com/"""
 
-from .common import Extractor, Message
-from .. import text, util, exception
-from ..cache import cache
 import itertools
 import json
 import re
@@ -19,7 +16,7 @@ import time
 
 import tqdm
 
-from .. import exception, text
+from .. import exception, text, util
 from ..cache import cache
 from .common import Extractor, Message
 

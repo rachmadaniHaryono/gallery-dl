@@ -14,6 +14,7 @@ from ..cache import cache, memcache
 import collections
 import itertools
 import mimetypes
+import binascii
 import time
 import re
 
@@ -39,7 +40,6 @@ class DeviantartExtractor(Extractor):
         self.offset = 0
         self.flat = self.config("flat", True)
         self.extra = self.config("extra", False)
-        self.quality = self.config("quality", "100")
         self.original = self.config("original", True)
         self.comments = self.config("comments", False)
         self.user = match.group(1) or match.group(2)
@@ -52,9 +52,6 @@ class DeviantartExtractor(Extractor):
             self.finalize = self._unwatch_premium
         else:
             self.unwatch = None
-
-        if self.quality:
-            self.quality = ",q_{}".format(self.quality)
 
         if self.original != "image":
             self._update_content = self._update_content_default
@@ -104,19 +101,8 @@ class DeviantartExtractor(Extractor):
 
                 if self.original and deviation["is_downloadable"]:
                     self._update_content(deviation, content)
-
-                if content["src"].startswith("https://images-wixmp-"):
-                    if deviation["index"] <= 790677560:
-                        # https://github.com/r888888888/danbooru/issues/4069
-                        intermediary, count = re.subn(
-                            r"(/f/[^/]+/[^/]+)/v\d+/.*",
-                            r"/intermediary\1", content["src"], 1)
-                        if count:
-                            deviation["_fallback"] = (content["src"],)
-                            content["src"] = intermediary
-                    if self.quality:
-                        content["src"] = re.sub(
-                            r",q_\d+", self.quality, content["src"], 1)
+                else:
+                    self._update_token(deviation, content)
 
                 yield self.commit(deviation, content)
 
@@ -151,11 +137,12 @@ class DeviantartExtractor(Extractor):
 
     def prepare(self, deviation):
         """Adjust the contents of a Deviation-object"""
-        try:
-            deviation["index"] = text.parse_int(
-                deviation["url"].rpartition("-")[2])
-        except KeyError:
-            deviation["index"] = 0
+        if "index" not in deviation:
+            try:
+                deviation["index"] = text.parse_int(
+                    deviation["url"].rpartition("-")[2])
+            except KeyError:
+                deviation["index"] = 0
 
         if self.user:
             deviation["username"] = self.user
@@ -302,6 +289,32 @@ class DeviantartExtractor(Extractor):
         if mtype and mtype.startswith("image/"):
             content.update(data)
 
+    def _update_token(self, deviation, content):
+        """Replace JWT to be able to remove width/height limits
+
+        All credit goes to @Ironchest337
+        for discovering and implementing this method
+        """
+        url, sep, _ = content["src"].partition("/v1/")
+        if not sep:
+            return
+
+        #  header = b'{"typ":"JWT","alg":"none"}'
+        payload = (
+            b'{"sub":"urn:app:","iss":"urn:app:","obj":[[{"path":"/f/' +
+            url.partition("/f/")[2].encode() +
+            b'"}]],"aud":["urn:service:file.download"]}'
+        )
+
+        deviation["_fallback"] = (content["src"],)
+        content["src"] = (
+            "{}?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.{}.".format(
+                url,
+                #  base64 of 'header' is precomputed as 'eyJ0eX...'
+                #  binascii.a2b_base64(header).rstrip(b"=\n").decode(),
+                binascii.b2a_base64(payload).rstrip(b"=\n").decode())
+        )
+
     def _limited_request(self, url, **kwargs):
         """Limits HTTP requests to one every 2 seconds"""
         kwargs["fatal"] = None
@@ -349,17 +362,17 @@ class DeviantartExtractor(Extractor):
                     "Error when trying to watch %s. "
                     "Try again with a new refresh-token", username)
 
-        if not has_access:
+        if has_access:
+            self.log.info("Fetching premium folder data")
+        else:
             self.log.warning("Unable to access premium content (type: %s)",
                              folder["type"])
-            self._fetch_premium = lambda _: None
-            return None
 
-        self.log.info("Fetching premium folder data")
         cache = self._premium_cache
         for dev in self.api.gallery(
                 username, folder["gallery_id"], public=False):
-            cache[dev["deviationid"]] = dev
+            cache[dev["deviationid"]] = dev if has_access else None
+
         return cache[deviation["deviationid"]]
 
     def _unwatch_premium(self):
@@ -590,7 +603,10 @@ class DeviantartStashExtractor(DeviantartExtractor):
         if stash_id[0] == "0":
             uuid = text.extract(page, '//deviation/', '"')[0]
             if uuid:
-                yield self.api.deviation(uuid)
+                deviation = self.api.deviation(uuid)
+                deviation["index"] = text.parse_int(text.extract(
+                    page, 'gmi-deviationid="', '"')[0])
+                yield deviation
                 return
 
         for item in text.extract_iter(
@@ -746,29 +762,27 @@ class DeviantartPopularExtractor(DeviantartExtractor):
 
     def __init__(self, match):
         DeviantartExtractor.__init__(self, match)
-        self.search_term = self.time_range = self.category_path = None
         self.user = ""
 
         trange1, path, trange2, query = match.groups()
-        trange = trange1 or trange2
         query = text.parse_query(query)
+        self.search_term = query.get("q")
 
-        if not trange:
-            trange = query.get("order")
-
-        if path:
-            self.category_path = path.strip("/")
-        if trange:
-            if trange.startswith("popular-"):
-                trange = trange[8:]
-            self.time_range = trange.replace("-", "").replace("hours", "hr")
-        if query:
-            self.search_term = query.get("q")
+        trange = trange1 or trange2 or query.get("order", "")
+        if trange.startswith("popular-"):
+            trange = trange[8:]
+        self.time_range = {
+            "most-recent" : "now",
+            "this-week"   : "1week",
+            "this-month"  : "1month",
+            "this-century": "alltime",
+            "all-time"    : "alltime",
+        }.get(trange, "alltime")
 
         self.popular = {
             "search": self.search_term or "",
-            "range" : trange or "",
-            "path"  : self.category_path,
+            "range" : trange or "all-time",
+            "path"  : path.strip("/") if path else "",
         }
 
     def deviations(self):
@@ -834,7 +848,7 @@ class DeviantartWatchPostsExtractor(DeviantartExtractor):
 class DeviantartDeviationExtractor(DeviantartExtractor):
     """Extractor for single deviations"""
     subcategory = "deviation"
-    archive_fmt = "{index}.{extension}"
+    archive_fmt = "g_{_username}_{index}.{extension}"
     pattern = BASE_PATTERN + r"/(art|journal)/(?:[^/?#]+-)?(\d+)"
     test = (
         (("https://www.deviantart.com/shimoda7/art/For-the-sake-10073852"), {
@@ -851,12 +865,8 @@ class DeviantartDeviationExtractor(DeviantartExtractor):
         }),
         # wixmp URL rewrite
         (("https://www.deviantart.com/citizenfresh/art/Hverarond-789295466"), {
-            "pattern": (r"https://images-wixmp-\w+\.wixmp\.com"
-                        r"/intermediary/f/[^/]+/[^.]+\.jpg")
-        }),
-        # wixmp URL rewrite v2 (#369)
-        (("https://www.deviantart.com/josephbiwald/art/Destiny-2-804940104"), {
-            "pattern": r"https://images-wixmp-\w+\.wixmp\.com/.*,q_100,"
+            "pattern": (r"https://images-wixmp-\w+\.wixmp\.com/f"
+                        r"/[^/]+/[^.]+\.jpg\?token="),
         }),
         # GIF (#242)
         (("https://www.deviantart.com/skatergators/art/COM-Moni-781571783"), {

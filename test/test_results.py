@@ -17,7 +17,8 @@ import hashlib
 import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from gallery_dl import extractor, util, job, config, exception  # noqa E402
+from gallery_dl import \
+    extractor, util, job, config, exception, formatter  # noqa E402
 
 
 # temporary issues, etc.
@@ -91,6 +92,8 @@ class TestExtractorResults(unittest.TestCase):
             for url, kwdict in zip(tjob.url_list, tjob.kwdict_list):
                 if "_extractor" in kwdict:
                     extr = kwdict["_extractor"].from_url(url)
+                    if extr is None and not result.get("extractor", True):
+                        continue
                     self.assertIsInstance(extr, kwdict["_extractor"])
                     self.assertEqual(extr.url, url)
         else:
@@ -260,14 +263,14 @@ class TestPathfmt():
         return 0
 
 
-class TestFormatter(util.Formatter):
+class TestFormatter(formatter.StringFormatter):
 
     @staticmethod
     def _noop(_):
         return ""
 
     def _apply_simple(self, key, fmt):
-        if key == "extension" or "._parse_optional." in repr(fmt):
+        if key == "extension" or "_parse_optional." in repr(fmt):
             return self._noop
 
         def wrap(obj):
@@ -275,7 +278,7 @@ class TestFormatter(util.Formatter):
         return wrap
 
     def _apply(self, key, funcs, fmt):
-        if key == "extension" or "._parse_optional." in repr(fmt):
+        if key == "extension" or "_parse_optional." in repr(fmt):
             return self._noop
 
         def wrap(obj):

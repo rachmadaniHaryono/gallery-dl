@@ -37,10 +37,21 @@ class TwitterExtractor(Extractor):
         self.retweets = self.config("retweets", False)
         self.replies = self.config("replies", True)
         self.twitpic = self.config("twitpic", False)
+        self.pinned = self.config("pinned", False)
         self.quoted = self.config("quoted", False)
         self.videos = self.config("videos", True)
         self.cards = self.config("cards", False)
         self._user_cache = {}
+
+        size = self.config("size")
+        if size is None:
+            self._size_image = "orig"
+            self._size_fallback = ("large", "medium", "small")
+        else:
+            if isinstance(size, str):
+                size = size.split(",")
+            self._size_image = size[0]
+            self._size_fallback = size[1:]
 
     def items(self):
         self.login()
@@ -51,7 +62,7 @@ class TwitterExtractor(Extractor):
             if not self.retweets and "retweeted_status_id_str" in tweet:
                 self.log.debug("Skipping %s (retweet)", tweet["id_str"])
                 continue
-            if not self.quoted and "quoted" in tweet:
+            if not self.quoted and "quoted_by_id_str" in tweet:
                 self.log.debug("Skipping %s (quoted tweet)", tweet["id_str"])
                 continue
             if "in_reply_to_user_id_str" in tweet and (
@@ -116,7 +127,7 @@ class TwitterExtractor(Extractor):
                 base, _, fmt = url.rpartition(".")
                 base += "?format=" + fmt + "&name="
                 files.append(text.nameext_from_url(url, {
-                    "url"      : base + "orig",
+                    "url"      : base + self._size_image,
                     "width"    : width,
                     "height"   : height,
                     "_fallback": self._image_fallback(base),
@@ -124,11 +135,9 @@ class TwitterExtractor(Extractor):
             else:
                 files.append({"url": media["media_url"]})
 
-    @staticmethod
-    def _image_fallback(base):
-        yield base + "large"
-        yield base + "medium"
-        yield base + "small"
+    def _image_fallback(self, base):
+        for fmt in self._size_fallback:
+            yield base + fmt
 
     def _extract_card(self, tweet, files):
         card = tweet["card"]
@@ -140,8 +149,10 @@ class TwitterExtractor(Extractor):
                 for size in ("original", "x_large", "large", "small"):
                     key = prefix + size
                     if key in bvals:
-                        files.append(bvals[key]["image_value"])
-                        return
+                        value = bvals[key].get("image_value")
+                        if value and "url" in value:
+                            files.append(value)
+                            return
         elif self.videos:
             url = "ytdl:{}/i/web/status/{}".format(self.root, tweet["id_str"])
             files.append({"url": url})
@@ -200,6 +211,8 @@ class TwitterExtractor(Extractor):
 
         if "in_reply_to_screen_name" in tweet:
             tdata["reply_to"] = tweet["in_reply_to_screen_name"]
+        if "quoted_by_id_str" in tweet:
+            tdata["quote_by"] = text.parse_int(tweet["quoted_by_id_str"])
 
         if "author" in tweet:
             tdata["author"] = self._transform_user(tweet["author"])
@@ -827,7 +840,7 @@ class TwitterAPI():
         if params is None:
             params = self.params.copy()
         original_retweets = (self.extractor.retweets == "original")
-        pinned_tweet = True
+        pinned_tweet = self.extractor.pinned
 
         while True:
             cursor = tweet = None
@@ -904,7 +917,7 @@ class TwitterAPI():
                         quoted = quoted.copy()
                         quoted["author"] = users[quoted["user_id_str"]]
                         quoted["user"] = tweet["user"]
-                        quoted["quoted"] = True
+                        quoted["quoted_by_id_str"] = tweet["id_str"]
                         yield quoted
 
             # update cursor value

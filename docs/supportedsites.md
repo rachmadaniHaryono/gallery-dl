@@ -182,6 +182,12 @@ Consider all sites to be NSFW unless otherwise known.
     <td><a href="https://github.com/mikf/gallery-dl#cookies">Cookies</a></td>
 </tr>
 <tr>
+    <td>Fappic</td>
+    <td>https://fappic.com/</td>
+    <td>individual Images</td>
+    <td></td>
+</tr>
+<tr>
     <td>Flickr</td>
     <td>https://www.flickr.com/</td>
     <td>Albums, Favorites, Galleries, Groups, individual Images, Search Results, User Profiles</td>
@@ -358,7 +364,7 @@ Consider all sites to be NSFW unless otherwise known.
 <tr>
     <td>Inkbunny</td>
     <td>https://inkbunny.net/</td>
-    <td>Favorites, Posts, User Profiles</td>
+    <td>Favorites, Pools, Posts, User Profiles</td>
     <td>Supported</td>
 </tr>
 <tr>
@@ -388,7 +394,7 @@ Consider all sites to be NSFW unless otherwise known.
 <tr>
     <td>Kemonoparty</td>
     <td>https://kemono.party/</td>
-    <td>Favorites, Posts, User Profiles</td>
+    <td>Discord Servers, Favorites, Posts, User Profiles</td>
     <td>Supported</td>
 </tr>
 <tr>
@@ -441,7 +447,7 @@ Consider all sites to be NSFW unless otherwise known.
 </tr>
 <tr>
     <td>MangaKakalot</td>
-    <td>https://mangakakalot.com/</td>
+    <td>https://mangakakalot.tv/</td>
     <td>Chapters, Manga</td>
     <td></td>
 </tr>
@@ -502,7 +508,7 @@ Consider all sites to be NSFW unless otherwise known.
 <tr>
     <td>nhentai</td>
     <td>https://nhentai.net/</td>
-    <td>Favorites, Galleries, Search Results</td>
+    <td>Favorites, Galleries, Search Results, Tag Searches</td>
     <td></td>
 </tr>
 <tr>
@@ -548,6 +554,12 @@ Consider all sites to be NSFW unless otherwise known.
     <td></td>
 </tr>
 <tr>
+    <td>Picarto</td>
+    <td>https://picarto.tv/</td>
+    <td>Galleries</td>
+    <td></td>
+</tr>
+<tr>
     <td>Piczel</td>
     <td>https://piczel.tv/</td>
     <td>Folders, individual Images, User Profiles</td>
@@ -574,7 +586,7 @@ Consider all sites to be NSFW unless otherwise known.
 <tr>
     <td>Pixiv</td>
     <td>https://www.pixiv.net/</td>
-    <td>Favorites, Follows, pixiv.me Links, pixivision, Rankings, Search Results, User Profiles, individual Images</td>
+    <td>Favorites, Follows, pixiv.me Links, pixivision, Rankings, Search Results, Sketch, User Profiles, individual Images</td>
     <td><a href="https://github.com/mikf/gallery-dl#oauth">OAuth</a></td>
 </tr>
 <tr>
@@ -664,8 +676,8 @@ Consider all sites to be NSFW unless otherwise known.
 <tr>
     <td>Seiso</td>
     <td>https://seiso.party/</td>
-    <td>Posts, User Profiles</td>
-    <td></td>
+    <td>Favorites, Posts, User Profiles</td>
+    <td>Supported</td>
 </tr>
 <tr>
     <td>Sen Manga</td>
@@ -683,6 +695,12 @@ Consider all sites to be NSFW unless otherwise known.
     <td>Simply Hentai</td>
     <td>https://www.simply-hentai.com/</td>
     <td>Galleries, individual Images, Videos</td>
+    <td></td>
+</tr>
+<tr>
+    <td>Skeb</td>
+    <td>https://skeb.jp/</td>
+    <td>Posts, User Profiles</td>
     <td></td>
 </tr>
 <tr>
@@ -766,7 +784,7 @@ Consider all sites to be NSFW unless otherwise known.
 <tr>
     <td>VK</td>
     <td>https://vk.com/</td>
-    <td>Photos</td>
+    <td>Albums, Photos</td>
     <td></td>
 </tr>
 <tr>

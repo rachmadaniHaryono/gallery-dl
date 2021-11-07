@@ -149,6 +149,10 @@ SUBCATEGORY_MAP = {
         "saved": "Saved Posts",
         "tagged": "Tagged Posts",
     },
+    "kemonoparty": {
+        "discord": "Discord Servers",
+        "discord-server": "",
+    },
     "mangadex": {
         "feed" : "Followed Feed",
     },
@@ -164,6 +168,7 @@ SUBCATEGORY_MAP = {
     "pixiv": {
         "me"  : "pixiv.me Links",
         "pixivision": "pixivision",
+        "sketch": "Sketch",
         "work": "individual Images",
     },
     "sankaku": {
@@ -238,6 +243,7 @@ AUTH_MAP = {
     "reddit"         : _OAUTH,
     "sankaku"        : "Supported",
     "seiga"          : "Required",
+    "seisoparty"     : "Supported",
     "smugmug"        : _OAUTH,
     "subscribestar"  : "Supported",
     "tapas"          : "Supported",

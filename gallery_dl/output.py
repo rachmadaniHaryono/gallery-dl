@@ -11,7 +11,7 @@ import sys
 import shutil
 import logging
 import unicodedata
-from . import config, util
+from . import config, util, formatter
 
 
 # --------------------------------------------------------------------
@@ -92,13 +92,13 @@ class Formatter(logging.Formatter):
         if isinstance(fmt, dict):
             for key in ("debug", "info", "warning", "error"):
                 value = fmt[key] if key in fmt else LOG_FORMAT
-                fmt[key] = (util.Formatter(value).format_map,
+                fmt[key] = (formatter.parse(value).format_map,
                             "{asctime" in value)
         else:
             if fmt == LOG_FORMAT:
                 fmt = (fmt.format_map, False)
             else:
-                fmt = (util.Formatter(fmt).format_map, "{asctime" in fmt)
+                fmt = (formatter.parse(fmt).format_map, "{asctime" in fmt)
             fmt = {"debug": fmt, "info": fmt, "warning": fmt, "error": fmt}
 
         self.formats = fmt
@@ -258,6 +258,9 @@ class NullOutput():
     def success(self, path, tries):
         """Print a message indicating the completion of a download"""
 
+    def progress(self, bytes_total, bytes_downloaded, bytes_per_second):
+        """Display download progress"""
+
 
 class PipeOutput(NullOutput):
 
@@ -288,6 +291,15 @@ class TerminalOutput(NullOutput):
 
     def success(self, path, tries):
         print("\r", self.shorten(CHAR_SUCCESS + path), sep="")
+
+    def progress(self, bytes_total, bytes_downloaded, bytes_per_second):
+        bdl = util.format_value(bytes_downloaded)
+        bps = util.format_value(bytes_per_second)
+        if bytes_total is None:
+            print("\r{:>7}B {:>7}B/s ".format(bdl, bps), end="")
+        else:
+            print("\r{:>3}% {:>7}B {:>7}B/s ".format(
+                bytes_downloaded * 100 // bytes_total, bdl, bps), end="")
 
 
 class ColorOutput(TerminalOutput):

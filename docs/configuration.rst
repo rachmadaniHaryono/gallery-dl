@@ -373,6 +373,7 @@ Description
     * ``mangoxo``
     * ``pillowfort``
     * ``sankaku``
+    * ``seisoparty``
     * ``subscribestar``
     * ``tapas``
     * ``tsumino``
@@ -523,6 +524,12 @@ Default
     ``null``
 Description
     Insert a file's download URL into its metadata dictionary as the given name.
+
+    For example, setting this option to ``"gdl_file_url"`` will cause a new
+    metadata field with name ``gdl_file_url`` to appear, which contains the
+    current file's download URL.
+    This can then be used in `filenames <extractor.*.filename_>`_,
+    with a ``metadata`` post processor, etc.
 
 
 extractor.*.category-transfer
@@ -1046,17 +1053,6 @@ Description
     everything else (archives, etc.).
 
 
-extractor.deviantart.quality
-----------------------------
-Type
-    ``integer``
-Default
-    ``100``
-Description
-    JPEG quality level of newer images for which
-    an original file download is not available.
-
-
 extractor.deviantart.refresh-token
 ----------------------------------
 Type
@@ -1230,16 +1226,20 @@ Description
 extractor.gfycat.format
 -----------------------
 Type
-    ``string``
+    * ``list`` of ``strings``
+    * ``string``
 Default
-    ``"mp4"``
+    ``["mp4", "webm", "mobile", "gif"]``
 Description
-    The name of the preferred animation format, which can be one of
-    ``"mp4"``, ``"webm"``, ``"gif"``, ``"webp"`` or ``"mjpg"``.
+    List of names of the preferred animation format, which can be
+    ``"mp4"``, ``"webm"``, ``"mobile"``, ``"gif"``, or ``"webp"``.
 
-    If the selected format is not available, ``"mp4"``, ``"webm"``
-    and ``"gif"`` (in that order) will be tried instead, until an
-    available format is found.
+    If a selected format is not available, the next one in the list will be
+    tried until an available format is found.
+
+    If the format is given as ``string``, it will be extended with
+    ``["mp4", "webm", "mobile", "gif"]``. Use a list with one element to
+    restrict it to only one possible format.
 
 
 extractor.hentaifoundry.include
@@ -1258,16 +1258,6 @@ Description
     ``"pictures"``, ``"scraps"``, ``"stories"``, ``"favorite"``.
 
     You can use ``"all"`` instead of listing all values separately.
-
-
-extractor.hentainexus.original
-------------------------------
-Type
-    ``bool``
-Default
-    ``true``
-Description
-    Download original files instead of WebP versions.
 
 
 extractor.hitomi.metadata
@@ -1336,6 +1326,16 @@ Default
     ``true``
 Description
     Download video files.
+
+
+extractor.kemonoparty.comments
+-----------------------------
+Type
+    ``bool``
+Default
+    ``false``
+Description
+    Extract ``comments`` metadata.
 
 
 extractor.kemonoparty.max-posts
@@ -1407,6 +1407,19 @@ Description
     The server to use for API requests.
 
 
+extractor.mangadex.api-parameters
+---------------------------------
+Type
+    ``object``
+Example
+    ``{"order[updatedAt]": "desc"}``
+Description
+    Additional query parameters to send when fetching manga chapters.
+
+    (See `/manga/{id}/feed <https://api.mangadex.org/docs.html#operation/get-manga-id-feed>`_
+    and `/user/follows/manga/feed <https://api.mangadex.org/docs.html#operation/get-user-follows-manga-feed>`_)
+
+
 extractor.mangadex.lang
 -----------------------
 Type
@@ -1426,6 +1439,16 @@ Default
     ``false``
 Description
     Provide ``artist``, ``author``, and ``group`` metadata fields.
+
+
+extractor.mangadex.ratings
+--------------------------
+Type
+    ``list`` of ``strings``
+Default
+    ``["safe", "suggestive", "erotica", "pornographic"]``
+Description
+    List of acceptable content ratings for returned chapters.
 
 
 extractor.mastodon.reblogs
@@ -1555,6 +1578,19 @@ Description
     of the port specified here. You'll have to manually adjust the
     port number in your browser's address bar when using a different
     port than the default.
+
+
+extractor.patreon.files
+-----------------------
+Type
+    ``list`` of ``strings``
+Default
+    ``["images", "attachments", "postfile", "content"]``
+Description
+    Determines the type and order of files to be downloaded.
+
+    Available types are
+    ``postfile``, ``images``, ``attachments``, and ``content``.
 
 
 extractor.photobucket.subalbums
@@ -1831,17 +1867,20 @@ Description
 extractor.redgifs.format
 ------------------------
 Type
-    ``string``
+    * ``list`` of ``strings``
+    * ``string``
 Default
-    ``"mp4"``
+    ``["hd", "sd", "gif"]``
 Description
-    The name of the preferred format, which can be one of
-    ``"mp4"``, ``"webm"``, ``"gif"``, ``"webp"``, ``"mobile"``,
-    or ``"mini"``.
+    List of names of the preferred animation format, which can be
+    ``"hd"``, ``"sd"``, `"gif"``, `"vthumbnail"``, `"thumbnail"``, or ``"poster"``.
 
-    If the selected format is not available, ``"mp4"``, ``"webm"``
-    and ``"gif"`` (in that order) will be tried instead, until an
-    available format is found.
+    If a selected format is not available, the next one in the list will be
+    tried until an available format is found.
+
+    If the format is given as ``string``, it will be extended with
+    ``["hd", "sd", "gif"]``. Use a list with one element to
+    restrict it to only one possible format.
 
 
 extractor.sankakucomplex.embeds
@@ -1966,6 +2005,21 @@ Description
     <https://help.twitter.com/en/using-twitter/twitter-conversations>`__.
 
 
+extractor.twitter.size
+----------------------
+Type
+    ``list`` of ``strings``
+Default
+    ``["orig", "large", "medium", "small"]``
+Description
+    The image version to download.
+    Any entries after the first one will be used for potential
+    `fallback <extractor.*.fallback_>`_ URLs.
+
+    Known available sizes are
+    ``4096x4096``, ``orig``, ``large``, ``medium``, and ``small``.
+
+
 extractor.twitter.logout
 ------------------------
 Type
@@ -1974,6 +2028,16 @@ Default
     ``false``
 Description
     Logout and retry as guest when access to another user's Tweets is blocked.
+
+
+extractor.twitter.pinned
+------------------------
+Type
+    ``bool``
+Default
+    ``false``
+Description
+    Fetch media from pinned Tweets.
 
 
 extractor.twitter.quoted
@@ -2262,6 +2326,15 @@ Description
     * ``false``: Start with the first chapter
 
 
+extractor.[manga-extractor].page-reverse
+----------------------------------------
+Type
+    ``bool``
+Default
+    ``false``
+Description
+    Download manga chapter pages in reverse order.
+
 
 Downloader Options
 ==================
@@ -2333,6 +2406,19 @@ Description
     Missing directories will be created as needed.
     If this value is ``null``, ``.part`` files are going to be stored
     alongside the actual output files.
+
+
+downloader.*.progress
+---------------------
+Type
+    ``float``
+Default
+    ``3.0``
+Description
+    Number of seconds until a download progress indicator
+    for the current download is displayed.
+
+    Set this option to ``null`` to disable this indicator.
 
 
 downloader.*.rate
@@ -2660,11 +2746,32 @@ Type
 Default
     ``"replace"``
 Description
-    The action to take when files do not compare as equal.
+    The action to take when files do **not** compare as equal.
 
     * ``"replace"``: Replace/Overwrite the old version with the new one
+
     * ``"enumerate"``: Add an enumeration index to the filename of the new
       version like `skip = "enumerate" <extractor.*.skip_>`__
+
+
+compare.equal
+-------------
+Type
+    ``string``
+Default
+    ``"null"``
+Description
+    The action to take when files do compare as equal.
+
+    * ``"abort:N"``: Stop the current extractor run
+      after ``N`` consecutive files compared as equal.
+
+    * ``"terminate:N"``: Stop the current extractor run,
+      including parent extractors,
+      after ``N`` consecutive files compared as equal.
+
+    * ``"exit:N"``: Exit the program
+      after ``N`` consecutive files compared as equal.
 
 
 compare.shallow
@@ -3089,7 +3196,7 @@ How To
       application and put them in your configuration file
       as ``"client-id"`` and ``"client-secret"``
     * clear your `cache <cache.file_>`__ to delete any remaining
-      ``access-token`` entries. (``gallery-dl --clear-cache``)
+      ``access-token`` entries. (``gallery-dl --clear-cache deviantart``)
     * get a new `refresh-token <extractor.deviantart.refresh-token_>`__ for the
       new ``client-id`` (``gallery-dl oauth:deviantart``)
 

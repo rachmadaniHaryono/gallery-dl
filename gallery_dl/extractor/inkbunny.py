@@ -135,31 +135,121 @@ class InkbunnyUserExtractor(InkbunnyExtractor):
         return self.api.search(params)
 
 
+class InkbunnyPoolExtractor(InkbunnyExtractor):
+    """Extractor for inkbunny pools"""
+    subcategory = "pool"
+    pattern = (BASE_PATTERN + r"/(?:"
+               r"poolview_process\.php\?pool_id=(\d+)|"
+               r"submissionsviewall\.php\?([^#]+&mode=pool&[^#]+))")
+    test = (
+        ("https://inkbunny.net/poolview_process.php?pool_id=28985", {
+            "count": 9,
+        }),
+        ("https://inkbunny.net/submissionsviewall.php?rid=ffffffffff"
+         "&mode=pool&pool_id=28985&page=1&orderby=pool_order&random=no"),
+    )
+
+    def __init__(self, match):
+        InkbunnyExtractor.__init__(self, match)
+        pid = match.group(1)
+        if pid:
+            self.pool_id = pid
+            self.orderby = "pool_order"
+        else:
+            params = text.parse_query(match.group(2))
+            self.pool_id = params.get("pool_id")
+            self.orderby = params.get("orderby", "pool_order")
+
+    def posts(self):
+        params = {
+            "pool_id": self.pool_id,
+            "orderby": self.orderby,
+        }
+        return self.api.search(params)
+
+
 class InkbunnyFavoriteExtractor(InkbunnyExtractor):
     """Extractor for inkbunny user favorites"""
     subcategory = "favorite"
-    pattern = BASE_PATTERN + r"/userfavorites_process\.php\?favs_user_id=(\d+)"
+    pattern = (BASE_PATTERN + r"/(?:"
+               r"userfavorites_process\.php\?favs_user_id=(\d+)|"
+               r"submissionsviewall\.php\?([^#]+&mode=userfavs&[^#]+))")
     test = (
         ("https://inkbunny.net/userfavorites_process.php?favs_user_id=20969", {
             "pattern": r"https://[\w.]+\.metapix\.net/files/full"
                        r"/\d+/\d+_\w+_.+",
             "range": "20-50",
         }),
+        ("https://inkbunny.net/submissionsviewall.php?rid=ffffffffff"
+         "&mode=userfavs&random=no&orderby=fav_datetime&page=1&user_id=20969"),
     )
 
     def __init__(self, match):
         InkbunnyExtractor.__init__(self, match)
-        self.user_id = match.group(1)
+        uid = match.group(1)
+        if uid:
+            self.user_id = uid
+            self.orderby = self.config("orderby", "fav_datetime")
+        else:
+            params = text.parse_query(match.group(2))
+            self.user_id = params.get("user_id")
+            self.orderby = params.get("orderby", "fav_datetime")
 
     def posts(self):
-        orderby = self.config("orderby", "fav_datetime")
         params = {
             "favs_user_id": self.user_id,
-            "orderby"     : orderby,
+            "orderby"     : self.orderby,
         }
-        if orderby and orderby.startswith("unread_"):
+        if self.orderby and self.orderby.startswith("unread_"):
             params["unread_submissions"] = "yes"
         return self.api.search(params)
+
+
+class InkbunnyFollowingExtractor(InkbunnyExtractor):
+    """Extractor for inkbunny user watches"""
+    subcategory = "following"
+    pattern = (BASE_PATTERN + r"/(?:"
+               r"watchlist_process\.php\?mode=watching&user_id=(\d+)|"
+               r"usersviewall\.php\?([^#]+&mode=watching&[^#]+))")
+    test = (
+        (("https://inkbunny.net/watchlist_process.php"
+          "?mode=watching&user_id=20969"), {
+            "pattern": InkbunnyUserExtractor.pattern,
+            "count": ">= 90",
+        }),
+        ("https://inkbunny.net/usersviewall.php?rid=ffffffffff"
+         "&mode=watching&page=1&user_id=20969&orderby=added&namesonly="),
+    )
+
+    def __init__(self, match):
+        InkbunnyExtractor.__init__(self, match)
+        self.user_id = match.group(1) or \
+            text.parse_query(match.group(2)).get("user_id")
+
+    def items(self):
+        url = self.root + "/watchlist_process.php"
+        params = {"mode": "watching", "user_id": self.user_id}
+
+        with self.request(url, params=params) as response:
+            url, _, params = response.url.partition("?")
+            page = response.text
+
+        params = text.parse_query(params)
+        params["page"] = text.parse_int(params.get("page"), 1)
+        data = {"_extractor": InkbunnyUserExtractor}
+
+        while True:
+            cnt = 0
+            for user in text.extract_iter(
+                    page, '<a class="widget_userNameSmall" href="', '"',
+                    page.index('id="changethumboriginal_form"')):
+                cnt += 1
+                yield Message.Queue, self.root + user, data
+
+            if cnt < 20:
+                return
+            params["page"] += 1
+            page = self.request(url, params=params).text
 
 
 class InkbunnyPostExtractor(InkbunnyExtractor):

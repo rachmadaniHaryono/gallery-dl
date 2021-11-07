@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2018-2020 Mike Fährmann
+# Copyright 2018-2021 Mike Fährmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -71,7 +71,7 @@ class SmugmugAlbumExtractor(SmugmugExtractor):
     pattern = r"smugmug:album:([^:]+)$"
     test = (
         ("smugmug:album:cr4C7f", {
-            "url": "1436ee98d5797b308ecce5862e4885944f59c03c",
+            "url": "2c2e576e47d4e9ce60b44871f08a8c66b5ebaceb",
         }),
         # empty
         ("smugmug:album:Fb7hMs", {
@@ -95,7 +95,6 @@ class SmugmugAlbumExtractor(SmugmugExtractor):
         del album["Uris"]
         data = {"Album": album, "User": user}
 
-        yield Message.Version, 1
         yield Message.Directory, data
 
         for image in self.api.album_images(self.album_id, "ImageSizeDetails"):
@@ -111,8 +110,8 @@ class SmugmugImageExtractor(SmugmugExtractor):
     pattern = BASE_PATTERN + r"(?:/[^/?#]+)+/i-([^/?#-]+)"
     test = (
         ("https://tdm.smugmug.com/Nature/Dove/i-kCsLJT6", {
-            "url": "f624ad7293afd6412a7d34e3950a118596c36c85",
-            "keyword": "d69c69c1517b8ea77bc763cffc4d0a4002dfee3f",
+            "url": "e6408fd2c64e721fd146130dceb56a971ceb4259",
+            "keyword": "05c8d50aa6ea08d458f83c38d7f9e92148362f0e",
             "content": "ecbd9d7b4f75a637abc8d35319be9ec065a44eb0",
         }),
         # video
@@ -133,7 +132,6 @@ class SmugmugImageExtractor(SmugmugExtractor):
         data = {"Image": image}
         text.nameext_from_url(url, data)
 
-        yield Message.Version, 1
         yield Message.Directory, data
         yield Message.Url, url, data
 
@@ -170,7 +168,6 @@ class SmugmugPathExtractor(SmugmugExtractor):
         self.domain, self.user, self.path = match.groups()
 
     def items(self):
-        yield Message.Version, 1
 
         if not self.user:
             self.user = self.api.site_user(self.domain)["NickName"]

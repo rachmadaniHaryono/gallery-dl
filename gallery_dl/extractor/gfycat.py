@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2017-2020 Mike Fährmann
+# Copyright 2017-2021 Mike Fährmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -22,7 +22,7 @@ class GfycatExtractor(Extractor):
 
     def __init__(self, match):
         Extractor.__init__(self, match)
-        self.key = match.group(1)
+        self.key = match.group(1).lower()
         self.formats = (self.config("format", "mp4"), "mp4", "webm", "gif")
 
     def items(self):
@@ -33,6 +33,7 @@ class GfycatExtractor(Extractor):
                 continue
             url = self._select_format(gfycat)
             gfycat.update(metadata)
+            gfycat["date"] = text.parse_timestamp(gfycat.get("createDate"))
             yield Message.Directory, gfycat
             yield Message.Url, url, gfycat
 
@@ -41,8 +42,11 @@ class GfycatExtractor(Extractor):
             key = fmt + "Url"
             if key in gfyitem:
                 url = gfyitem[key]
+                if url.startswith("http:"):
+                    url = "https" + url[4:]
                 gfyitem["extension"] = url.rpartition(".")[2]
                 return url
+        gfyitem["extension"] = ""
         return ""
 
     def metadata(self):
@@ -98,10 +102,11 @@ class GfycatImageExtractor(GfycatExtractor):
             "keyword": {
                 "gfyId": "graygenerouscowrie",
                 "gfyName": "GrayGenerousCowrie",
-                "gfyNumber": "755075459",
+                "gfyNumber": 755075459,
                 "title": "Bottom's up",
                 "username": "jackson3oh3",
                 "createDate": 1495884169,
+                "date": "dt:2017-05-27 11:22:49",
                 "md5": "a4796e05b0db9ba9ce5140145cd318aa",
                 "width": 400,
                 "height": 224,
@@ -143,6 +148,7 @@ class GfycatImageExtractor(GfycatExtractor):
                 self.log.warning("Skipping '%s' (malformed)", gfycat["gfyId"])
                 return
             url = self._select_format(gfycat)
+            gfycat["date"] = text.parse_timestamp(gfycat.get("createDate"))
             yield Message.Directory, gfycat
             yield Message.Url, url, gfycat
 
@@ -171,7 +177,10 @@ class GfycatAPI():
 
     @cache(keyarg=1, maxage=3600)
     def _authenticate_impl(self, category):
-        url = "https://weblogin." + category + ".com/oauth/webtoken"
+        if category == "redgifs":
+            url = "https://api.redgifs.com/v1/oauth/webtoken"
+        else:
+            url = "https://weblogin." + category + ".com/oauth/webtoken"
         data = {"access_key": self.ACCESS_KEY}
         headers = {"Referer": self.extractor.root + "/",
                    "Origin" : self.extractor.root}
@@ -190,7 +199,11 @@ class GfycatAPI():
         while True:
             data = self._call(endpoint, params)
             gfycats = data["gfycats"]
-            yield from gfycats
+
+            for gfycat in gfycats:
+                if "gfyName" not in gfycat:
+                    gfycat.update(self.gfycat(gfycat["gfyId"]))
+                yield gfycat
 
             if "found" not in data and len(gfycats) < params["count"] or \
                     not data["gfycats"]:

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2019-2020 Mike Fährmann
+# Copyright 2019-2021 Mike Fährmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -11,10 +11,7 @@
 from .common import Extractor, Message
 from .. import text
 import urllib.parse
-import random
-import time
 import json
-
 
 BASE_PATTERN = r"(?:https?://)?((?:[^/.]+\.)?reactor\.cc)"
 
@@ -24,16 +21,14 @@ class ReactorExtractor(Extractor):
     basecategory = "reactor"
     filename_fmt = "{post_id}_{num:>02}{title[:100]:?_//}.{extension}"
     archive_fmt = "{post_id}_{num}"
+    instances = ()
+    request_interval = 5.0
 
     def __init__(self, match):
         Extractor.__init__(self, match)
         self.root = "http://" + match.group(1)
         self.session.headers["Referer"] = self.root
-
-        self.wait_min = self.config("wait-min", 3)
-        self.wait_max = self.config("wait-max", 6)
-        if self.wait_max < self.wait_min:
-            self.wait_max = self.wait_min
+        self.gif = self.config("gif", False)
 
         if not self.category:
             # set category based on domain name
@@ -42,7 +37,6 @@ class ReactorExtractor(Extractor):
 
     def items(self):
         data = self.metadata()
-        yield Message.Version, 1
         yield Message.Directory, data
         for post in self.posts():
             for image in self._parse_post(post):
@@ -60,8 +54,6 @@ class ReactorExtractor(Extractor):
 
     def _pagination(self, url):
         while True:
-            time.sleep(random.uniform(self.wait_min, self.wait_max))
-
             response = self.request(url)
             if response.history:
                 # sometimes there is a redirect from
@@ -86,6 +78,8 @@ class ReactorExtractor(Extractor):
 
     def _parse_post(self, post):
         post, _, script = post.partition('<script type="application/ld+json">')
+        if not script:
+            return
         images = text.extract_iter(post, '<div class="image">', '</div>')
         script = script[:script.index("</")].strip()
 
@@ -129,6 +123,12 @@ class ReactorExtractor(Extractor):
                 url = "ytdl:" + text.unescape(url)
             elif "/post/webm/" not in url and "/post/mp4/" not in url:
                 url = url.replace("/post/", "/post/full/")
+
+            if self.gif and ("/post/webm/" in url or "/post/mp4/" in url):
+                gif_url = text.extract(image, '<a href="', '"')[0]
+                if not gif_url:
+                    continue
+                url = gif_url
 
             yield {
                 "url": url,
@@ -196,7 +196,6 @@ class ReactorPostExtractor(ReactorExtractor):
         self.post_id = match.group(2)
 
     def items(self):
-        yield Message.Version, 1
         post = self.request(self.url).text
         pos = post.find('class="uhead">')
         for image in self._parse_post(post[pos:]):
@@ -218,10 +217,10 @@ class JoyreactorTagExtractor(ReactorTagExtractor):
     pattern = JR_BASE_PATTERN + r"/tag/([^/?#]+)"
     test = (
         ("http://joyreactor.cc/tag/Advent+Cirno", {
-            "count": ">= 17",
+            "count": ">= 15",
         }),
         ("http://joyreactor.com/tag/Cirno", {
-            "url": "de1e60c15bfb07a0e9603b00dc3d05f60edc7914",
+            "url": "aa59090590b26f4654881301fe8fe748a51625a8",
         }),
     )
 
@@ -231,12 +230,13 @@ class JoyreactorSearchExtractor(ReactorSearchExtractor):
     category = "joyreactor"
     pattern = JR_BASE_PATTERN + r"/search(?:/|\?q=)([^/?#]+)"
     test = (
-        ("http://joyreactor.cc/search/Cirno+Gifs", {
+        ("http://joyreactor.cc/search/Nature", {
             "range": "1-25",
             "count": ">= 20",
         }),
-        ("http://joyreactor.com/search?q=Cirno+Gifs", {
-            "count": 0,  # no search results on joyreactor.com
+        ("http://joyreactor.com/search?q=Nature", {
+            "range": "1-25",
+            "count": ">= 20",
         }),
     )
 
@@ -248,7 +248,7 @@ class JoyreactorUserExtractor(ReactorUserExtractor):
     test = (
         ("http://joyreactor.cc/user/hemantic"),
         ("http://joyreactor.com/user/Tacoman123", {
-            "url": "452cd0fa23e2ad0e122c296ba75aa7f0b29329f6",
+            "url": "60ce9a3e3db791a0899f7fb7643b5b87d09ae3b5",
         }),
     )
 
@@ -259,23 +259,27 @@ class JoyreactorPostExtractor(ReactorPostExtractor):
     pattern = JR_BASE_PATTERN + r"/post/(\d+)"
     test = (
         ("http://joyreactor.com/post/3721876", {  # single image
-            "url": "6ce09f239d8b7fdf6dd1664c2afc39618cc87663",
-            "keyword": "147ed5b9799ba43cbd16168450afcfae5ddedbf3",
+            "pattern": r"http://img\d\.joyreactor\.com/pics/post/full"
+                       r"/cartoon-painting-monster-lake-4841316.jpeg",
+            "count": 1,
+            "keyword": "2207a7dfed55def2042b6c2554894c8d7fda386e",
         }),
         ("http://joyreactor.com/post/3713804", {  # 4 images
-            "url": "f08ac8493ca0619a3e3c6bedb8d8374af3eec304",
-            "keyword": "f12c6f3c2f298fed9b12bd3e70fb823870aa9b93",
+            "pattern": r"http://img\d\.joyreactor\.com/pics/post/full"
+                       r"/movie-tv-godzilla-monsters-\d+\.jpeg",
+            "count": 4,
+            "keyword": "d7da9ba7809004c809eedcf6f1c06ad0fbb3df21",
         }),
         ("http://joyreactor.com/post/3726210", {  # gif / video
-            "url": "33a48e1eca6cb2d298fbbb6536b3283799d6515b",
-            "keyword": "d173cc6e88f02a63904e475eacd7050304eb1967",
+            "url": "60f3b9a0a3918b269bea9b4f8f1a5ab3c2c550f8",
+            "keyword": "8949d9d5fc469dab264752432efbaa499561664a",
         }),
         ("http://joyreactor.com/post/3668724", {  # youtube embed
             "url": "bf1666eddcff10c9b58f6be63fa94e4e13074214",
             "keyword": "e18b1ffbd79d76f9a0e90b6d474cc2499e343f0b",
         }),
         ("http://joyreactor.cc/post/1299", {  # "malformed" JSON
-            "url": "ac900743ed7cf1baf3db3b531c3bc414bf1ffcde",
+            "url": "ab02c6eb7b4035ad961b29ee0770ee41be2fcc39",
         }),
     )
 
@@ -304,10 +308,7 @@ class PornreactorSearchExtractor(ReactorSearchExtractor):
     category = "pornreactor"
     pattern = PR_BASE_PATTERN + r"/search(?:/|\?q=)([^/?#]+)"
     test = (
-        ("http://pornreactor.cc/search?q=ecchi+hentai", {
-            "range": "1-25",
-            "count": ">= 25",
-        }),
+        ("http://pornreactor.cc/search?q=ecchi+hentai"),
         ("http://fapreactor.com/search/ecchi+hentai"),
     )
 
@@ -319,7 +320,7 @@ class PornreactorUserExtractor(ReactorUserExtractor):
     test = (
         ("http://pornreactor.cc/user/Disillusion", {
             "range": "1-25",
-            "count": ">= 25",
+            "count": ">= 20",
         }),
         ("http://fapreactor.com/user/Disillusion"),
     )
@@ -332,10 +333,10 @@ class PornreactorPostExtractor(ReactorPostExtractor):
     pattern = PR_BASE_PATTERN + r"/post/(\d+)"
     test = (
         ("http://pornreactor.cc/post/863166", {
-            "url": "680db1e33ca92ff70b2c0e1708c471cbe2201324",
+            "url": "a09fb0577489e1f9564c25d0ad576f81b19c2ef3",
             "content": "ec6b0568bfb1803648744077da082d14de844340",
         }),
         ("http://fapreactor.com/post/863166", {
-            "url": "864ecd5785e4898301aa8d054dd653b1165be158",
+            "url": "2a956ce0c90e8bc47b4392db4fa25ad1342f3e54",
         }),
     )

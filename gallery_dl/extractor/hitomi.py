@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2015-2020 Mike Fährmann
+# Copyright 2015-2021 Mike Fährmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -35,12 +35,12 @@ class HitomiGalleryExtractor(GalleryExtractor):
         }),
         # Game CG with scenes (#321)
         ("https://hitomi.la/galleries/733697.html", {
-            "url": "ec3fe9b708ee376ec579b90d053ad485c0777552",
+            "url": "e057652b40629d3d72b0ef059c6ec7556417139c",
             "count": 210,
         }),
         # fallback for galleries only available through /reader/ URLs
         ("https://hitomi.la/galleries/1045954.html", {
-            "url": "bf4ed4e726204da5bc37a236ca476a2a96081388",
+            "url": "779b94b47d5f0c2341db03499270d2b5370196f6",
             "count": 1413,
         }),
         # gallery with "broken" redirect
@@ -140,11 +140,10 @@ class HitomiGalleryExtractor(GalleryExtractor):
 
             # see https://ltn.hitomi.la/common.js
             inum = int(ihash[-3:-1], 16)
-            frontends = 2 if inum < 0x30 else 3
-            inum = 1 if inum < 0x09 else inum
+            offset = 2 if inum < 0x44 else 1 if inum < 0x88 else 0
 
             url = "https://{}b.hitomi.la/images/{}/{}/{}.{}".format(
-                chr(97 + (inum % frontends)),
+                chr(97 + offset),
                 ihash[-1], ihash[-3:-1], ihash,
                 idata["extension"],
             )

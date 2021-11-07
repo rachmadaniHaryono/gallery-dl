@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright 2015-2020 Mike Fährmann
+# Copyright 2015-2021 Mike Fährmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -14,6 +14,7 @@ import unittest
 import io
 import random
 import string
+import datetime
 import http.cookiejar
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -123,7 +124,7 @@ class TestPredicate(unittest.TestCase):
 
         pred = util.build_predicate([util.UniquePredicate(),
                                      util.UniquePredicate()])
-        self.assertIsInstance(pred, util.ChainPredicate)
+        self.assertIs(pred.func, util.chain_predicates)
 
 
 class TestISO639_1(unittest.TestCase):
@@ -133,6 +134,7 @@ class TestISO639_1(unittest.TestCase):
         self._run_test(util.code_to_language, {
             ("en",): "English",
             ("FR",): "French",
+            ("ja",): "Japanese",
             ("xx",): None,
             (""  ,): None,
             (None,): None,
@@ -148,6 +150,7 @@ class TestISO639_1(unittest.TestCase):
         self._run_test(util.language_to_code, {
             ("English",): "en",
             ("fRENch",): "fr",
+            ("Japanese",): "ja",
             ("xx",): None,
             (""  ,): None,
             (None,): None,
@@ -267,6 +270,8 @@ class TestFormatter(unittest.TestCase):
         "n": None,
         "s": " \n\r\tSPACE    ",
         "u": "%27%3C%20/%20%3E%27",
+        "t": 1262304000,
+        "dt": datetime.datetime(2010, 1, 1),
         "name": "Name",
         "title1": "Title",
         "title2": "",
@@ -289,6 +294,11 @@ class TestFormatter(unittest.TestCase):
         self._run_test("{a!S}", self.kwdict["a"])
         self._run_test("{l!S}", "a, b, c")
         self._run_test("{n!S}", "")
+        self._run_test("{t!d}", datetime.datetime(2010, 1, 1))
+        self._run_test("{t!d:%Y-%m-%d}", "2010-01-01")
+        self._run_test("{dt!T}", "1262304000")
+        self._run_test("{l!j}", '["a", "b", "c"]')
+
         with self.assertRaises(KeyError):
             self._run_test("{a!q}", "hello world")
 
@@ -456,6 +466,16 @@ class TestOther(unittest.TestCase):
         self.assertSequenceEqual(
             list(util.unique([1, 2, 1, 3, 2, 1])), [1, 2, 3])
 
+    def test_unique_sequence(self):
+        self.assertSequenceEqual(
+            list(util.unique_sequence("")), "")
+        self.assertSequenceEqual(
+            list(util.unique_sequence("AABBCC")), "ABC")
+        self.assertSequenceEqual(
+            list(util.unique_sequence("ABABABCAABBCC")), "ABABABCABC")
+        self.assertSequenceEqual(
+            list(util.unique_sequence([1, 2, 1, 3, 2, 1])), [1, 2, 1, 3, 2, 1])
+
     def test_raises(self):
         func = util.raises(Exception)
         with self.assertRaises(Exception):
@@ -468,6 +488,66 @@ class TestOther(unittest.TestCase):
             func(2)
         with self.assertRaises(ValueError):
             func(3)
+
+    def test_identity(self):
+        for value in (123, "foo", [1, 2, 3], (1, 2, 3), {1: 2}, None):
+            self.assertIs(util.identity(value), value)
+
+    def test_noop(self):
+        self.assertEqual(util.noop(), None)
+
+    def test_compile_expression(self):
+        expr = util.compile_expression("1 + 2 * 3")
+        self.assertEqual(expr(), 7)
+        self.assertEqual(expr({"a": 1, "b": 2, "c": 3}), 7)
+        self.assertEqual(expr({"a": 9, "b": 9, "c": 9}), 7)
+
+        expr = util.compile_expression("a + b * c")
+        self.assertEqual(expr({"a": 1, "b": 2, "c": 3}), 7)
+        self.assertEqual(expr({"a": 9, "b": 9, "c": 9}), 90)
+
+        with self.assertRaises(NameError):
+            expr()
+        with self.assertRaises(NameError):
+            expr({"a": 2})
+
+        with self.assertRaises(SyntaxError):
+            util.compile_expression("")
+        with self.assertRaises(SyntaxError):
+            util.compile_expression("x++")
+
+        expr = util.compile_expression("1 and abort()")
+        with self.assertRaises(exception.StopExtraction):
+            expr()
+
+    def test_generate_token(self):
+        tokens = set()
+        for _ in range(100):
+            token = util.generate_token()
+            tokens.add(token)
+            self.assertEqual(len(token), 16 * 2)
+            self.assertRegex(token, r"^[0-9a-f]+$")
+        self.assertGreaterEqual(len(tokens), 99)
+
+        token = util.generate_token(80)
+        self.assertEqual(len(token), 80 * 2)
+        self.assertRegex(token, r"^[0-9a-f]+$")
+
+    def test_format_value(self):
+        self.assertEqual(util.format_value(0)         , "0B")
+        self.assertEqual(util.format_value(1)         , "1B")
+        self.assertEqual(util.format_value(12)        , "12B")
+        self.assertEqual(util.format_value(123)       , "123B")
+        self.assertEqual(util.format_value(1234)      , "1.23kB")
+        self.assertEqual(util.format_value(12345)     , "12.34kB")
+        self.assertEqual(util.format_value(123456)    , "123.45kB")
+        self.assertEqual(util.format_value(1234567)   , "1.23MB")
+        self.assertEqual(util.format_value(12345678)  , "12.34MB")
+        self.assertEqual(util.format_value(123456789) , "123.45MB")
+        self.assertEqual(util.format_value(1234567890), "1.23GB")
+
+        self.assertEqual(util.format_value(123   , "B/s"), "123B/s")
+        self.assertEqual(util.format_value(123456, "B/s"), "123.45kB/s")
 
     def test_combine_dict(self):
         self.assertEqual(
@@ -539,6 +619,11 @@ class TestOther(unittest.TestCase):
         self.assertEqual(f([1])  , "1")
         self.assertEqual(f(["a", "b", "c"]), "a, b, c")
         self.assertEqual(f([1, 2, 3]), "1, 2, 3")
+
+    def test_to_timestamp(self, f=util.to_timestamp):
+        self.assertEqual(f(util.EPOCH), "0")
+        self.assertEqual(f(datetime.datetime(2010, 1, 1)), "1262304000")
+        self.assertEqual(f(None), "")
 
     def test_universal_none(self):
         obj = util.NONE

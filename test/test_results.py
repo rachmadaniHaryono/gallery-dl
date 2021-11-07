@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright 2015-2020 Mike Fährmann
+# Copyright 2015-2021 Mike Fährmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -20,18 +20,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from gallery_dl import extractor, util, job, config, exception  # noqa E402
 
 
-# these don't work on Travis CI
-TRAVIS_SKIP = {
-    "exhentai", "mangafox", "dynastyscans", "nijie", "instagram", "ngomik",
-    "archivedmoe", "archiveofsins", "thebarchive", "fireden", "4plebs",
-    "sankaku", "idolcomplex", "mangahere", "mangadex", "sankakucomplex",
-    "warosu", "fuskator", "patreon", "komikcast", "twitter",
-}
-
 # temporary issues, etc.
 BROKEN = {
-    "dokireader",
-    "imagevenue",
     "photobucket",
 }
 
@@ -312,6 +302,7 @@ def setup_test_config():
     config.set(("extractor", "nijie")     , "username", email)
     config.set(("extractor", "seiga")     , "username", email)
     config.set(("extractor", "pinterest") , "username", email2)
+    config.set(("extractor", "pinterest") , "username", None)  # login broken
 
     config.set(("extractor", "newgrounds"), "username", "d1618111")
     config.set(("extractor", "newgrounds"), "password", "d1618111")
@@ -320,7 +311,7 @@ def setup_test_config():
     config.set(("extractor", "mangoxo")   , "password", "5zbQF10_5u25259Ma")
 
     for category in ("danbooru", "instagram", "twitter", "subscribestar",
-                     "e621", "inkbunny"):
+                     "e621", "inkbunny", "tapas", "pillowfort", "mangadex"):
         config.set(("extractor", category), "username", None)
 
     config.set(("extractor", "mastodon.social"), "access-token",
@@ -361,8 +352,6 @@ def generate_tests():
         del sys.argv[1:]
     else:
         skip = set(BROKEN)
-        if "CI" in os.environ and "TRAVIS" in os.environ:
-            skip |= set(TRAVIS_SKIP)
         if skip:
             print("skipping:", ", ".join(skip))
         fltr = lambda c, bc: c not in skip  # noqa: E731

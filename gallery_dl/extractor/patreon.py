@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2019-2020 Mike Fährmann
+# Copyright 2019-2021 Mike Fährmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -23,10 +23,10 @@ class PatreonExtractor(Extractor):
     directory_fmt = ("{category}", "{creator[full_name]}")
     filename_fmt = "{id}_{title}_{num:>02}.{extension}"
     archive_fmt = "{id}_{num}"
+    browser = "firefox"
     _warning = True
 
     def items(self):
-        yield Message.Version, 1
 
         if self._warning:
             if "session_id" not in self.session.cookies:
@@ -34,12 +34,14 @@ class PatreonExtractor(Extractor):
             PatreonExtractor._warning = False
 
         for post in self.posts():
+
+            if not post.get("current_user_can_view", True):
+                self.log.warning("Not allowed to view post %s", post["id"])
+                continue
             post["num"] = 0
             hashes = set()
 
             yield Message.Directory, post
-            yield Message.Metadata, post
-
             for kind, url, name in itertools.chain(
                 self._images(post),
                 self._attachments(post),
@@ -113,14 +115,27 @@ class PatreonExtractor(Extractor):
         """Process and extend a 'post' object"""
         attr = post["attributes"]
         attr["id"] = text.parse_int(post["id"])
-        attr["images"] = self._files(post, included, "images")
-        attr["attachments"] = self._files(post, included, "attachments")
-        attr["date"] = text.parse_datetime(
-            attr["published_at"], "%Y-%m-%dT%H:%M:%S.%f%z")
-        user = post["relationships"]["user"]
-        attr["creator"] = (
-            self._user(user["links"]["related"]) or
-            included["user"][user["data"]["id"]])
+
+        if attr.get("current_user_can_view", True):
+
+            relationships = post["relationships"]
+            attr["images"] = self._files(post, included, "images")
+            attr["attachments"] = self._files(post, included, "attachments")
+            attr["date"] = text.parse_datetime(
+                attr["published_at"], "%Y-%m-%dT%H:%M:%S.%f%z")
+
+            tags = relationships.get("user_defined_tags")
+            attr["tags"] = [
+                tag["id"].replace("user_defined;", "")
+                for tag in tags["data"]
+                if tag["type"] == "post_tag"
+            ] if tags else []
+
+            user = relationships["user"]
+            attr["creator"] = (
+                self._user(user["links"]["related"]) or
+                included["user"][user["data"]["id"]])
+
         return attr
 
     @staticmethod
@@ -242,9 +257,9 @@ class PatreonCreatorExtractor(PatreonExtractor):
 
         creator_id = query.get("u")
         if creator_id:
-            url = "{}/user?u={}".format(self.root, creator_id)
+            url = "{}/user/posts?u={}".format(self.root, creator_id)
         else:
-            url = "{}/{}".format(self.root, self.creator.lower())
+            url = "{}/{}/posts".format(self.root, self.creator)
 
         page = self.request(url, notfound="creator").text
         campaign_id = text.extract(page, "/campaign/", "/")[0]
@@ -292,6 +307,10 @@ class PatreonPostExtractor(PatreonExtractor):
         # postfile + content
         ("https://www.patreon.com/posts/19987002", {
             "count": 4,
+        }),
+        # tags (#1539)
+        ("https://www.patreon.com/posts/free-post-12497641", {
+            "keyword": {"tags": ["AWMedia"]},
         }),
         ("https://www.patreon.com/posts/not-found-123", {
             "exception": exception.NotFoundError,

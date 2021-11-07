@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2015-2019 Mike Fährmann
+# Copyright 2015-2021 Mike Fährmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 
-"""Extract manga-chapters from https://dynasty-scans.com/"""
+"""Extractors for https://dynasty-scans.com/"""
 
 from .common import ChapterExtractor, Extractor, Message
 from .. import text
 import json
 import re
-
 
 BASE_PATTERN = r"(?:https?://)?(?:www\.)?dynasty-scans\.com"
 
@@ -36,7 +35,7 @@ class DynastyscansBase():
         return {
             "url"     : self.root + url,
             "image_id": text.parse_int(image_id),
-            "tags"    : text.split_html(text.unescape(tags)),
+            "tags"    : text.split_html(tags),
             "date"    : text.remove_html(date),
             "source"  : text.unescape(src),
         }
@@ -113,7 +112,6 @@ class DynastyscansSearchExtractor(DynastyscansBase, Extractor):
         self.query = match.group(1) or ""
 
     def items(self):
-        yield Message.Version, 1
         yield Message.Directory, {}
         for image_id in self.images():
             image = self._parse_image_page(image_id)
@@ -138,7 +136,7 @@ class DynastyscansImageExtractor(DynastyscansSearchExtractor):
     pattern = BASE_PATTERN + r"/images/(\d+)"
     test = ("https://dynasty-scans.com/images/1245", {
         "url": "15e54bd94148a07ed037f387d046c27befa043b2",
-        "keyword": "3b630c6139e5ff06e141541d57960f8a2957efbb",
+        "keyword": "0d8976c2d6fbc9ed6aa712642631b96e456dc37f",
     })
 
     def images(self):

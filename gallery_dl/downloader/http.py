@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2014-2020 Mike Fährmann
+# Copyright 2014-2021 Mike Fährmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -31,6 +31,7 @@ class HttpDownloader(DownloaderBase):
         self.downloading = False
 
         self.adjust_extension = self.config("adjust-extensions", True)
+        self.headers = self.config("headers")
         self.minsize = self.config("filesize-min")
         self.maxsize = self.config("filesize-max")
         self.retries = self.config("retries", extractor._retries)
@@ -79,6 +80,10 @@ class HttpDownloader(DownloaderBase):
         tries = 0
         msg = ""
 
+        kwdict = pathfmt.kwdict
+        adjust_extension = kwdict.get(
+            "_http_adjust_extension", self.adjust_extension)
+
         if self.part:
             pathfmt.part_enable(self.partdir)
 
@@ -93,17 +98,21 @@ class HttpDownloader(DownloaderBase):
                 time.sleep(tries)
 
             tries += 1
-            headers = {}
             file_header = None
 
-            # check for .part file
+            # collect HTTP headers
+            headers = {"Accept": "*/*"}
+            #   file-specific headers
+            extra = kwdict.get("_http_headers")
+            if extra:
+                headers.update(extra)
+            #   general headers
+            if self.headers:
+                headers.update(self.headers)
+            #   partial content
             file_size = pathfmt.part_size()
             if file_size:
                 headers["Range"] = "bytes={}-".format(file_size)
-            # file-specific headers
-            extra = pathfmt.kwdict.get("_http_headers")
-            if extra:
-                headers.update(extra)
 
             # connect to (remote) source
             try:
@@ -134,6 +143,12 @@ class HttpDownloader(DownloaderBase):
                 self.log.warning(msg)
                 return False
 
+            # check for invalid responses
+            validate = kwdict.get("_http_validate")
+            if validate and not validate(response):
+                self.log.warning("Invalid response")
+                return False
+
             # set missing filename extension from MIME type
             if not pathfmt.extension:
                 pathfmt.set_extension(self._find_extension(response))
@@ -158,7 +173,7 @@ class HttpDownloader(DownloaderBase):
             content = response.iter_content(self.chunk_size)
 
             # check filename extension against file header
-            if self.adjust_extension and not offset and \
+            if adjust_extension and not offset and \
                     pathfmt.extension in FILE_SIGNATURES:
                 try:
                     file_header = next(
@@ -188,7 +203,7 @@ class HttpDownloader(DownloaderBase):
                 if file_header:
                     fp.write(file_header)
                 elif offset:
-                    if self.adjust_extension and \
+                    if adjust_extension and \
                             pathfmt.extension in FILE_SIGNATURES:
                         self._adjust_extension(pathfmt, fp.read(16))
                     fp.seek(offset)
@@ -212,10 +227,9 @@ class HttpDownloader(DownloaderBase):
 
         self.downloading = False
         if self.mtime:
-            pathfmt.kwdict.setdefault(
-                "_mtime", response.headers.get("Last-Modified"))
+            kwdict.setdefault("_mtime", response.headers.get("Last-Modified"))
         else:
-            pathfmt.kwdict["_mtime"] = None
+            kwdict["_mtime"] = None
 
         return True
 
@@ -283,7 +297,10 @@ MIME_TYPES = {
     "image/x-ms-bmp": "bmp",
     "image/webp"    : "webp",
     "image/svg+xml" : "svg",
-
+    "image/ico"     : "ico",
+    "image/icon"    : "ico",
+    "image/x-icon"  : "ico",
+    "image/vnd.microsoft.icon" : "ico",
     "image/x-photoshop"        : "psd",
     "application/x-photoshop"  : "psd",
     "image/vnd.adobe.photoshop": "psd",
@@ -314,7 +331,7 @@ MIME_TYPES = {
     "application/octet-stream": "bin",
 }
 
-# taken from https://en.wikipedia.org/wiki/List_of_file_signatures
+# https://en.wikipedia.org/wiki/List_of_file_signatures
 FILE_SIGNATURES = {
     "jpg" : b"\xFF\xD8\xFF",
     "png" : b"\x89PNG\r\n\x1A\n",
@@ -322,6 +339,8 @@ FILE_SIGNATURES = {
     "bmp" : b"BM",
     "webp": b"RIFF",
     "svg" : b"<?xml",
+    "ico" : b"\x00\x00\x01\x00",
+    "cur" : b"\x00\x00\x02\x00",
     "psd" : b"8BPS",
     "webm": b"\x1A\x45\xDF\xA3",
     "ogg" : b"OggS",
@@ -333,8 +352,7 @@ FILE_SIGNATURES = {
     "pdf" : b"%PDF-",
     "swf" : (b"CWS", b"FWS"),
     # check 'bin' files against all other file signatures
-    "bin" : b"\x00\x00\x00\x00",
+    "bin" : b"\x00\x00\x00\x00\x00\x00\x00\x00",
 }
-
 
 __downloader__ = HttpDownloader

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2018-2020 Mike Fährmann
+# Copyright 2018-2021 Mike Fährmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -22,7 +22,6 @@ class PiczelExtractor(Extractor):
     api_root = "https://tombstone.piczel.tv"
 
     def items(self):
-        yield Message.Version, 1
         for post in self.posts():
             post["tags"] = [t["title"] for t in post["tags"] if t["title"]]
             post["date"] = text.parse_datetime(
@@ -117,7 +116,6 @@ class PiczelImageExtractor(PiczelExtractor):
             "description": None,
             "extension": "png",
             "favorites_count": int,
-            "folder": dict,
             "folder_id": 1113,
             "id": 7807,
             "is_flash": False,

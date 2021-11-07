@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2015-2019 Mike Fährmann
+# Copyright 2015-2021 Mike Fährmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
 # published by the Free Software Foundation.
 
-"""Extract images from https://nhentai.net/"""
+"""Extractors for https://nhentai.net/"""
 
 from .common import GalleryExtractor, Extractor, Message
 from .. import text, util
@@ -23,7 +23,7 @@ class NhentaiBase():
 
 class NhentaiGalleryExtractor(NhentaiBase, GalleryExtractor):
     """Extractor for image galleries from nhentai.net"""
-    pattern = r"(?:https?://)?nhentai\.net(/g/(\d+))"
+    pattern = r"(?:https?://)?nhentai\.net/g/(\d+)"
     test = ("https://nhentai.net/g/147850/", {
         "url": "5179dbf0f96af44005a0ff705a0ad64ac26547d0",
         "keyword": {
@@ -49,13 +49,11 @@ class NhentaiGalleryExtractor(NhentaiBase, GalleryExtractor):
     })
 
     def __init__(self, match):
-        GalleryExtractor.__init__(self, match)
-        self.gallery_id = match.group(2)
-        self.data = None
+        url = self.root + "/api/gallery/" + match.group(1)
+        GalleryExtractor.__init__(self, match, url)
 
     def metadata(self, page):
-        self.data = data = json.loads(text.parse_unicode_escapes(text.extract(
-            page, 'JSON.parse("', '");')[0]))
+        self.data = data = json.loads(page)
 
         title_en = data["title"].get("english", "")
         title_ja = data["title"].get("japanese", "")
@@ -103,7 +101,6 @@ class NhentaiGalleryExtractor(NhentaiBase, GalleryExtractor):
 
 class NhentaiSearchExtractor(NhentaiBase, Extractor):
     """Extractor for nhentai search results"""
-    category = "nhentai"
     subcategory = "search"
     pattern = r"(?:https?://)?nhentai\.net/search/?\?([^#]+)"
     test = ("https://nhentai.net/search/?q=touhou", {
@@ -117,7 +114,6 @@ class NhentaiSearchExtractor(NhentaiBase, Extractor):
         self.params = text.parse_query(match.group(1))
 
     def items(self):
-        yield Message.Version, 1
         data = {"_extractor": NhentaiGalleryExtractor}
         for gallery_id in self._pagination(self.params):
             url = "{}/g/{}/".format(self.root, gallery_id)
@@ -125,6 +121,34 @@ class NhentaiSearchExtractor(NhentaiBase, Extractor):
 
     def _pagination(self, params):
         url = "{}/search/".format(self.root)
+        params["page"] = text.parse_int(params.get("page"), 1)
+
+        while True:
+            page = self.request(url, params=params).text
+            yield from text.extract_iter(page, 'href="/g/', '/')
+            if 'class="next"' not in page:
+                return
+            params["page"] += 1
+
+
+class NhentaiFavoriteExtractor(NhentaiBase, Extractor):
+    """Extractor for nhentai favorites"""
+    subcategory = "favorite"
+    pattern = r"(?:https?://)?nhentai\.net/favorites/?(?:\?([^#]+))?"
+    test = ("https://nhentai.net/favorites/",)
+
+    def __init__(self, match):
+        Extractor.__init__(self, match)
+        self.params = text.parse_query(match.group(1))
+
+    def items(self):
+        data = {"_extractor": NhentaiGalleryExtractor}
+        for gallery_id in self._pagination(self.params):
+            url = "{}/g/{}/".format(self.root, gallery_id)
+            yield Message.Queue, url, data
+
+    def _pagination(self, params):
+        url = "{}/favorites/".format(self.root)
         params["page"] = text.parse_int(params.get("page"), 1)
 
         while True:

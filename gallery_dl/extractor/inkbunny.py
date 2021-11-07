@@ -30,9 +30,8 @@ class InkbunnyExtractor(Extractor):
 
     def items(self):
         self.api.authenticate()
-        to_bool = ("deleted", "digitalsales", "favorite", "forsale",
-                   "friends_only", "guest_block", "hidden", "printsales",
-                   "public", "scraps")
+        to_bool = ("deleted", "favorite", "friends_only", "guest_block",
+                   "hidden", "public", "scraps")
 
         for post in self.posts():
             post["date"] = text.parse_datetime(
@@ -42,7 +41,8 @@ class InkbunnyExtractor(Extractor):
             files = post["files"]
 
             for key in to_bool:
-                post[key] = (post[key] == "t")
+                if key in post:
+                    post[key] = (post[key] == "t")
 
             del post["keywords"]
             del post["files"]
@@ -54,13 +54,17 @@ class InkbunnyExtractor(Extractor):
                 post["date"] = text.parse_datetime(
                     file["create_datetime"] + "00", "%Y-%m-%d %H:%M:%S.%f%z")
                 text.nameext_from_url(file["file_name"], post)
-                yield Message.Url, file["file_url_full"], post
+
+                url = file["file_url_full"]
+                if "/private_files/" in url:
+                    url += "?sid=" + self.api.session_id
+                yield Message.Url, url, post
 
 
 class InkbunnyUserExtractor(InkbunnyExtractor):
     """Extractor for inkbunny user profiles"""
     subcategory = "user"
-    pattern = BASE_PATTERN + r"/(?!s/)(gallery/|scraps/)?([^/?#]+)"
+    pattern = BASE_PATTERN + r"/(?!s/)(gallery/|scraps/)?(\w+)(?:$|[/?#])"
     test = (
         ("https://inkbunny.net/soina", {
             "pattern": r"https://[\w.]+\.metapix\.net/files/full"
@@ -77,17 +81,14 @@ class InkbunnyUserExtractor(InkbunnyExtractor):
                 "user_id"      : "20969",
                 "comments_count" : "re:[0-9]+",
                 "deleted"        : bool,
-                "digitalsales"   : bool,
                 "favorite"       : bool,
                 "favorites_count": "re:[0-9]+",
-                "forsale"        : bool,
                 "friends_only"   : bool,
                 "guest_block"    : bool,
                 "hidden"         : bool,
                 "pagecount"      : "re:[0-9]+",
                 "pools"          : list,
                 "pools_count"    : int,
-                "printsales"     : bool,
                 "public"         : bool,
                 "rating_id"      : "re:[0-9]+",
                 "rating_name"    : str,
@@ -134,6 +135,33 @@ class InkbunnyUserExtractor(InkbunnyExtractor):
         return self.api.search(params)
 
 
+class InkbunnyFavoriteExtractor(InkbunnyExtractor):
+    """Extractor for inkbunny user favorites"""
+    subcategory = "favorite"
+    pattern = BASE_PATTERN + r"/userfavorites_process\.php\?favs_user_id=(\d+)"
+    test = (
+        ("https://inkbunny.net/userfavorites_process.php?favs_user_id=20969", {
+            "pattern": r"https://[\w.]+\.metapix\.net/files/full"
+                       r"/\d+/\d+_\w+_.+",
+            "range": "20-50",
+        }),
+    )
+
+    def __init__(self, match):
+        InkbunnyExtractor.__init__(self, match)
+        self.user_id = match.group(1)
+
+    def posts(self):
+        orderby = self.config("orderby", "fav_datetime")
+        params = {
+            "favs_user_id": self.user_id,
+            "orderby"     : orderby,
+        }
+        if orderby and orderby.startswith("unread_"):
+            params["unread_submissions"] = "yes"
+        return self.api.search(params)
+
+
 class InkbunnyPostExtractor(InkbunnyExtractor):
     """Extractor for individual Inkbunny posts"""
     subcategory = "post"
@@ -154,7 +182,10 @@ class InkbunnyPostExtractor(InkbunnyExtractor):
         self.submission_id = match.group(1)
 
     def posts(self):
-        return self.api.detail(({"submission_id": self.submission_id},))
+        submissions = self.api.detail(({"submission_id": self.submission_id},))
+        if submissions[0] is None:
+            raise exception.NotFoundError("submission")
+        return submissions
 
 
 class InkbunnyAPI():

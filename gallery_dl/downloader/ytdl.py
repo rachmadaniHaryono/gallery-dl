@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2018-2020 Mike Fährmann
+# Copyright 2018-2021 Mike Fährmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -8,7 +8,6 @@
 
 """Downloader module for URLs requiring youtube-dl support"""
 
-from youtube_dl import YoutubeDL, DEFAULT_OUTTMPL
 from .common import DownloaderBase
 from .. import text
 import os
@@ -18,6 +17,8 @@ class YoutubeDLDownloader(DownloaderBase):
     scheme = "ytdl"
 
     def __init__(self, job):
+        module = __import__(self.config("module") or "youtube_dl")
+
         DownloaderBase.__init__(self, job)
         extractor = job.extractor
 
@@ -36,42 +37,53 @@ class YoutubeDLDownloader(DownloaderBase):
             "max_filesize": text.parse_bytes(
                 self.config("filesize-max"), None),
         }
-        options.update(self.config("raw-options") or {})
+
+        raw_options = self.config("raw-options")
+        if raw_options:
+            options.update(raw_options)
 
         if self.config("logging", True):
             options["logger"] = self.log
         self.forward_cookies = self.config("forward-cookies", False)
 
-        outtmpl = self.config("outtmpl")
-        self.outtmpl = DEFAULT_OUTTMPL if outtmpl == "default" else outtmpl
+        self.outtmpl = self.config("outtmpl")
+        if self.outtmpl == "default":
+            self.outtmpl = module.DEFAULT_OUTTMPL
 
-        self.ytdl = YoutubeDL(options)
+        self.ytdl = module.YoutubeDL(options)
 
     def download(self, url, pathfmt):
-        if self.forward_cookies:
-            set_cookie = self.ytdl.cookiejar.set_cookie
-            for cookie in self.session.cookies:
-                set_cookie(cookie)
+        kwdict = pathfmt.kwdict
 
-        try:
-            info_dict = self.ytdl.extract_info(url[5:], download=False)
-        except Exception:
-            return False
+        ytdl = kwdict.pop("_ytdl_instance", None)
+        if not ytdl:
+            ytdl = self.ytdl
+            if self.forward_cookies:
+                set_cookie = ytdl.cookiejar.set_cookie
+                for cookie in self.session.cookies:
+                    set_cookie(cookie)
+
+        info_dict = kwdict.pop("_ytdl_info_dict", None)
+        if not info_dict:
+            try:
+                info_dict = ytdl.extract_info(url[5:], download=False)
+            except Exception:
+                return False
 
         if "entries" in info_dict:
-            index = pathfmt.kwdict.get("_ytdl_index")
+            index = kwdict.get("_ytdl_index")
             if index is None:
-                return self._download_playlist(pathfmt, info_dict)
+                return self._download_playlist(ytdl, pathfmt, info_dict)
             else:
                 info_dict = info_dict["entries"][index]
 
-        extra = pathfmt.kwdict.get("_ytdl_extra")
+        extra = kwdict.get("_ytdl_extra")
         if extra:
             info_dict.update(extra)
 
-        return self._download_video(pathfmt, info_dict)
+        return self._download_video(ytdl, pathfmt, info_dict)
 
-    def _download_video(self, pathfmt, info_dict):
+    def _download_video(self, ytdl, pathfmt, info_dict):
         if "url" in info_dict:
             text.nameext_from_url(info_dict["url"], pathfmt.kwdict)
 
@@ -80,8 +92,8 @@ class YoutubeDLDownloader(DownloaderBase):
             info_dict["ext"] = "mkv"
 
         if self.outtmpl:
-            self.ytdl.params["outtmpl"] = self.outtmpl
-            pathfmt.filename = filename = self.ytdl.prepare_filename(info_dict)
+            self._set_outtmpl(ytdl, self.outtmpl)
+            pathfmt.filename = filename = ytdl.prepare_filename(info_dict)
             pathfmt.extension = info_dict["ext"]
             pathfmt.path = pathfmt.directory + filename
             pathfmt.realpath = pathfmt.temppath = (
@@ -95,26 +107,35 @@ class YoutubeDLDownloader(DownloaderBase):
         if self.part and self.partdir:
             pathfmt.temppath = os.path.join(
                 self.partdir, pathfmt.filename)
-        self.ytdl.params["outtmpl"] = pathfmt.temppath.replace("%", "%%")
+
+        self._set_outtmpl(ytdl, pathfmt.temppath.replace("%", "%%"))
 
         self.out.start(pathfmt.path)
         try:
-            self.ytdl.process_info(info_dict)
+            ytdl.process_info(info_dict)
         except Exception:
             self.log.debug("Traceback", exc_info=True)
             return False
         return True
 
-    def _download_playlist(self, pathfmt, info_dict):
+    def _download_playlist(self, ytdl, pathfmt, info_dict):
         pathfmt.set_extension("%(playlist_index)s.%(ext)s")
-        self.ytdl.params["outtmpl"] = pathfmt.realpath
+        self._set_outtmpl(ytdl, pathfmt.realpath)
 
         for entry in info_dict["entries"]:
-            self.ytdl.process_info(entry)
+            ytdl.process_info(entry)
         return True
+
+    @staticmethod
+    def _set_outtmpl(ytdl, outtmpl):
+        try:
+            ytdl.outtmpl_dict["default"] = outtmpl
+        except AttributeError:
+            ytdl.params["outtmpl"] = outtmpl
 
 
 def compatible_formats(formats):
+    """Returns True if 'formats' are compatible for merge"""
     video_ext = formats[0].get("ext")
     audio_ext = formats[1].get("ext")
 

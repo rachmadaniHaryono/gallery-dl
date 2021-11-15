@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import collections
+import html
 import logging
 import os
 import queue
@@ -68,34 +69,38 @@ class TwitterHandler(BaseHandler):
     @staticmethod
     def handle_job(job, url_dict, url_set):
         job_list = []
+
+        def get_subtag_from_dict(inp_dict: T.Dict[str, str]) -> str:
+            return (
+                inp_dict["name"]
+                if inp_dict["nick"] == inp_dict["name"]
+                else "{} ({})".format(inp_dict["name"], inp_dict["nick"])
+            )
+
         for item in filter(lambda x: x[0] == 3, job.data):
             # main url
+            author = item[2]["author"]
+            user = item[2]["user"]
             tags = set()
-            tags.add("category:author:nick:" + item[2]["author"]["nick"])
-            tags.add("category:author:name:" + item[2]["author"]["name"])
-            subtag = item[2]["user"]["name"]
-            if subtag and ("category:author:name:" + subtag) not in tags:
-                tags.add("category:user:name:" + subtag)
-            subtag = item[2]["user"]["nick"]
-            if subtag and ("category:author:nick:" + subtag) not in tags:
-                tags.add("category:user:nick:" + subtag)
-            tags.add("description:" + item[2]["content"])
+            author_subtag = get_subtag_from_dict(author)
+            tags.add(f"category:author:{author_subtag}")
+            if (user_subtag := get_subtag_from_dict(user)) != author_subtag:
+                tags.add(f"category:user:{user_subtag}")
+            tags.add(
+                "description:{}:{}".format(
+                    author["name"], html.unescape(item[2]["content"].replace("\n", " "))
+                )
+            )
             for tag in item[2].get("hashtags", []):
                 tags.add(tag.replace(":", " "))
             for mention in item[2].get("mentions", []):
-                subtag = mention.get("nick", None)
-                if subtag and ("category:author:nick:" + subtag) not in tags:
-                    tags.add("category:mention:nick:" + subtag)
-                subtag = mention.get("name", None)
-                if subtag and ("category:author:name:" + subtag) not in tags:
-                    tags.add("category:mention:name:" + subtag)
+                if (mention_subtag := get_subtag_from_dict(mention)) != author_subtag:
+                    tags.add(f"category:mention:nick:{mention_subtag}")
             if item[1]:
                 url_dict[item[1]].update(tags)
             # profile_banner and profile_image in author section
             tags = set()
-            author = item[2]["author"]
-            tags.add("category:author:nick:" + author["nick"])
-            tags.add("category:author:name:" + author["name"])
+            tags.add(f"category:{author_subtag}")
             tags.add("description:" + author["description"])
             for url in [
                 author["profile_banner"],
@@ -105,9 +110,6 @@ class TwitterHandler(BaseHandler):
                     continue
                 url_dict[url].update(tags)
             # profile_banner and profile_image in author section
-            user = item[2]["user"]
-            user_name = user["name"]
-            user_nick = user["nick"]
             for url in [
                 user["profile_banner"],
                 user["profile_banner"],
@@ -115,16 +117,7 @@ class TwitterHandler(BaseHandler):
                 if not url:
                     continue
                 url_dict[url].add("description:" + user["description"])
-                if (
-                    user_name
-                    and ("category:author:name:" + subtag) not in url_dict[url]
-                ):
-                    url_dict[url].add("category:user:name:" + user_name)
-                if (
-                    user_nick
-                    and ("category:author:nick:" + subtag) not in url_dict[url]
-                ):
-                    url_dict[url].add("category:user:nick:" + user_nick)
+                url_dict[url].add(f"category:{user_subtag}")
 
         for item in filter(lambda x: x[0] == 6 and x[1] not in url_set, job.data):
             try:

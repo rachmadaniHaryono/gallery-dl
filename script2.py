@@ -184,7 +184,7 @@ def send_url(urls):
     cl = hydrus.Client(os.getenv("HYDRUS_ACCESS_KEY"))
     jq = queue.Queue()  # job queue
     config.load()
-    for url in set(urls):
+    for url in {x for x in urls if x}:
         try:
             jq.put(DataJob(url))
         except NoExtractorError as err:
@@ -197,7 +197,7 @@ def send_url(urls):
         job.run()
         if any(x[0] not in [2, 3, 6] for x in job.data):
             print(
-                str(set(x[0] for x in job.data if x[0] not in [2, 3, 6]))
+                str({x[0] for x in job.data if x[0] not in [2, 3, 6]})
                 + ":"
                 + job.extractor.url
             )
@@ -215,7 +215,7 @@ def send_url(urls):
         res = handle_func(job, url_dict, url_set)
         for key, val in res.get("url_dict", {}).items():
             if not key:
-                logging.debug("No key" + str(dict(key=key, tags=tags)))
+                logging.debug("No key" + str(dict(key=key, tags=val)))
                 continue
             url_dict[key].update(val)
         for item in res.get("url_set", set()):

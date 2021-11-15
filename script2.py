@@ -4,6 +4,7 @@ import collections
 import logging
 import os
 import queue
+import typing as T
 
 import hydrus
 import tqdm
@@ -12,8 +13,51 @@ from gallery_dl import config
 from gallery_dl.exception import NoExtractorError
 from gallery_dl.job import DataJob
 
+UrlSetType = T.Set[str]
+UrlDictType = collections.defaultdict[str, set]
+DataJobListType = T.List[DataJob]
+HandleJobResultType = T.TypedDict(
+    "HandleJobResultType",
+    {"url_dict": UrlDictType, "url_set": UrlSetType, "job_list": DataJobListType},
+)
 
-class TwitterHandler:
+
+class BaseHandler:
+    extractors: T.Sequence[str]
+
+    @staticmethod
+    def handle_job(
+        job: DataJob, url_dict: UrlDictType, url_set: UrlSetType
+    ) -> HandleJobResultType:
+        job_list: DataJobListType = []
+        key_dict = {
+            "category_": "category:",
+            "thread": "thread:",
+            "person": "person:",
+            "title": "title:",
+            "label": "label:",
+            "series": "series:",
+            "person": "person:",
+        }
+        item: T.List[T.Any]
+        for item in filter(lambda x: x[0] == 3, job.data):
+            for key, namespace in key_dict.items():
+                for subtag in item[2].get(key, []):
+                    url_dict[item[1]].add(namespace + subtag)
+            if item[1] not in url_dict:
+                url_dict[item[1]] = set()
+        for item in filter(lambda x: x[0] == 6 and x[1] not in url_set, job.data):
+            try:
+                job_list.append(DataJob(item[1]))
+            except NoExtractorError:
+                logging.error("no extractor, url: " + item[1])
+            url_set.add(item[1])
+        return HandleJobResultType(
+            url_dict=url_dict, url_set=url_set, job_list=job_list
+        )
+
+
+class TwitterHandler(BaseHandler):
     extractors = (
         "TwitterMediaExtractor",
         "TwitterSearchExtractor",
@@ -154,35 +198,9 @@ class SankakuHandler:
         return dict(url_dict=url_dict, url_set=url_set, job_list=job_list)
 
 
-def handle_job(job, url_dict, url_set):
-    job_list = []
-    key_dict = {
-        "category_": "category:",
-        "thread": "thread:",
-        "person": "person:",
-        "title": "title:",
-        "label": "label:",
-        "series": "series:",
-        "person": "person:",
-    }
-    for item in filter(lambda x: x[0] == 3, job.data):
-        for key, namespace in key_dict.items():
-            for subtag in item[2].get(key, []):
-                url_dict[item[1]].add(namespace + subtag)
-        if item[1] not in url_dict:
-            url_dict[item[1]] = set()
-    for item in filter(lambda x: x[0] == 6 and x[1] not in url_set, job.data):
-        try:
-            job_list.append(DataJob(item[1]))
-        except NoExtractorError:
-            logging.error("no extractor, url: " + item[1])
-        url_set.add(item[1])
-    return dict(url_dict=url_dict, url_set=url_set, job_list=job_list)
-
-
 def send_url(urls):
     cl = hydrus.Client(os.getenv("HYDRUS_ACCESS_KEY"))
-    jq = queue.Queue()  # job queue
+    jq: "queue.Queue[DataJob]" = queue.Queue()
     config.load()
     for url in {x for x in urls if x}:
         try:
@@ -211,7 +229,7 @@ def send_url(urls):
                 handle_func = handler.handle_job
                 break
         else:
-            handle_func = handle_job
+            handle_func = BaseHandler.handle_job
         res = handle_func(job, url_dict, url_set)
         for key, val in res.get("url_dict", {}).items():
             if not key:

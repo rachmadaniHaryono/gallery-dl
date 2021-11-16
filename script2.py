@@ -6,6 +6,8 @@ import logging
 import os
 import queue
 import typing as T
+from os import path
+from urllib import parse
 
 import hydrus
 import tqdm
@@ -15,7 +17,7 @@ from gallery_dl.exception import NoExtractorError
 from gallery_dl.job import DataJob
 
 UrlSetType = T.Set[str]
-UrlDictType = collections.defaultdict[str, set]
+UrlDictType = collections.defaultdict[str, T.Set[str]]
 DataJobListType = T.List[DataJob]
 HandleJobResultType = T.TypedDict(
     "HandleJobResultType",
@@ -191,7 +193,7 @@ class SankakuHandler:
         return dict(url_dict=url_dict, url_set=url_set, job_list=job_list)
 
 
-def send_url(urls):
+def send_url(urls: T.List[str]):
     cl = hydrus.Client(os.getenv("HYDRUS_ACCESS_KEY"))
     jq: "queue.Queue[DataJob]" = queue.Queue()
     config.load()
@@ -201,16 +203,16 @@ def send_url(urls):
         except NoExtractorError as err:
             logging.error(f"url: {url}")
             raise err
-    url_dict = collections.defaultdict(set)
+    url_dict: UrlDictType = collections.defaultdict(set)
     url_set = set(urls)
-    while not jq.empty():
+    while tqdm.tqdm(not jq.empty()):
         job = jq.get()
+        job_url = job.extractor.url
+        tqdm.tqdm.write("qsize:{}:url:{}".format(jq.qsize, job_url))
         job.run()
         if any(x[0] not in [2, 3, 6] for x in job.data):
-            print(
-                str({x[0] for x in job.data if x[0] not in [2, 3, 6]})
-                + ":"
-                + job.extractor.url
+            tqdm.tqdm.write(
+                str({x[0] for x in job.data if x[0] not in [2, 3, 6]}) + ":" + job_url
             )
         for handler in [
             HentaicosplaysGalleryHandler,
@@ -234,13 +236,18 @@ def send_url(urls):
         for item in res.get("job_list", []):
             jq.put(item)
 
+    err_list = []
     for item in tqdm.tqdm(sorted(url_dict.items())):
         url, tags = item
+        ext = path.splitext(parse.urlparse(url).path)[1].lower()
         tqdm.tqdm.write(str(item))
         kwargs = {"url": url}
         if tags:
             kwargs["service_names_to_additional_tags"] = {"my tags": list(tags)}
+        if ext in (".gif", ".webm", ".mp4"):
+            kwargs["page_name"] = "video"
         try:
             cl.add_url(**kwargs)
         except hydrus.MissingParameter as err:
-            logging.error("MissingParameter:{}".format(dict(url=url, tags=tags)))
+            err_list.append((err, url, tags))
+    [logging.error("{}:url:{}:tags:{}".format(*x)) for x in err_list]

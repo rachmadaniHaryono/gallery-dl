@@ -151,6 +151,8 @@ modules = [
     "oauth",
     "test",
     "ytdl",
+    # custom
+    "bi_girl",
 ]
 
 

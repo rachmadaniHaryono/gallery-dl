@@ -9,6 +9,10 @@
 import re
 
 modules = [
+    # custom
+    "bi_girl",
+    "dmm",
+    # gallery_dl
     "2chan",
     "35photo",
     "3dbooru",
@@ -151,8 +155,6 @@ modules = [
     "oauth",
     "test",
     "ytdl",
-    # custom
-    "bi_girl",
 ]
 
 

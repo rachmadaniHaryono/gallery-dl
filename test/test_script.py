@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 import script2 as sc
-from gallery_dl.job import DataJob
+from gallery_dl.job import DataJob, config
 
 
 @pytest.mark.golden_test("data/test_extractor_*.yaml")
@@ -18,20 +18,30 @@ def test_extractor(golden):
     ] == golden.out["output"]
 
 
+import logging
+
+
 @pytest.mark.golden_test("data/test_items_*.yaml")
 @pytest.mark.vcr()
-def test_items(golden):
+def test_items(golden, caplog):
+    config.load()
     job = DataJob(golden["url"])
-    job.run()
-    assert (
-        list(
-            sorted(
-                job.data,
-                key=lambda x: (x[0],) if isinstance(x[1], dict) else (x[0], x[1]),
-            )
-        )
-        == golden.out["output"]
-    )
+    with caplog.at_level(logging.DEBUG):
+        job.run()
+    output_data = collections.defaultdict(list)
+    for item in job.data:
+        output_data[item[0]].append([x for x in item[1:] if x])
+    try:
+        output_data = {k: list(sorted(v)) for k, v in output_data.items()}
+    except TypeError:
+        output_data = {k: list(v) for k, v in output_data.items()}
+    assert output_data == golden.out["output"]
+    debug_data = collections.defaultdict(set)
+    for item in caplog.record_tuples:
+        if item[0] == job.extractor.category and item[1] == logging.DEBUG:
+            parts = item[2].split(",", 1)
+            debug_data[parts[0]].add(parts[1])
+    assert {k: list(sorted(v)) for k, v in debug_data.items()} == golden.out["debug"]
 
 
 @pytest.mark.golden_test("data/test_handler_*.yaml")
@@ -41,7 +51,11 @@ def test_handler(golden):
     with (
         pathlib.Path(__file__).parent / "data" / f"test_items_{name}.yaml"
     ).open() as f:
-        job.data = yaml.safe_load(f)["output"]
+        raw_data = yaml.safe_load(f)["output"]
+    job.data = []
+    for k, vals in raw_data.items():
+        for v in vals:
+            job.data.append([k] + list(v))
     handler_func = getattr(sc, golden["handler"]).handle_job
     res = handler_func(job, collections.defaultdict(set), ())
     sort_list = lambda x: list(sorted(x))
@@ -54,3 +68,10 @@ def test_handler(golden):
         elif item[1]:
             # only check when there is value
             assert item[1] == golden.out[item[0]]
+
+
+@pytest.mark.golden_test("data/test_url_*.yaml")
+def test_url(golden):
+    assert [
+        [x, DataJob(x).extractor.__class__.__name__] for x in golden["urls"]
+    ] == golden.out["outputs"]

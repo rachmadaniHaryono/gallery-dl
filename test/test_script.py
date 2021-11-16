@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import collections
 import pathlib
+import typing as T
 from unittest import mock
 
 import pytest
@@ -72,6 +73,15 @@ def test_handler(golden):
 
 @pytest.mark.golden_test("data/test_url_*.yaml")
 def test_url(golden):
-    assert [
-        [x, DataJob(x).extractor.__class__.__name__] for x in golden["urls"]
-    ] == golden.out["outputs"]
+    def sorted_list(inp: T.Iterable[T.Any]) -> T.List[T.Any]:
+        return list(sorted(inp))
+
+    output_data = []
+    for url in golden["urls"]:
+        try:
+            output_data.append([url, DataJob(url).extractor.__class__.__name__])
+        except Exception as err:
+            logging.error("url:%s", url)
+            raise err
+    assert sorted_list(output_data) == golden.out["outputs"]
+    assert sorted_list(golden["urls"]) == golden.out["urls"]

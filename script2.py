@@ -12,6 +12,7 @@ from urllib import parse
 import hydrus
 import natsort
 import tqdm
+import yaml
 
 from gallery_dl import config
 from gallery_dl.exception import NoExtractorError
@@ -186,6 +187,10 @@ class SankakuHandler:
         return dict(url_dict=url_dict, url_set=url_set, job_list=job_list)
 
 
+import contextlib
+import pprint
+
+
 def send_url(urls: T.List[str]):
     cl = hydrus.Client(os.getenv("HYDRUS_ACCESS_KEY"))
     jq: "queue.Queue[DataJob]" = queue.Queue()
@@ -202,7 +207,13 @@ def send_url(urls: T.List[str]):
         job = jq.get()
         job_url = job.extractor.url
         tqdm.tqdm.write(f"qsize:{jq.qsize()}:len_url:{len(url_dict)}:url:{job_url}")
-        job.run()
+        with contextlib.redirect_stdout(open(os.devnull, "w")):
+            job.run()
+        dict_to_print = collections.defaultdict(list)
+        for item in job.data:
+            dict_to_print[item[0]].append(list(item[1:]))
+        for k, v in dict_to_print.items():
+            tqdm.tqdm.write("key:" + str(k) + "\n" + yaml.dump(v, allow_unicode=True))
         if any(x[0] not in [2, 3, 6] for x in job.data):
             tqdm.tqdm.write(
                 str({x[0] for x in job.data if x[0] not in [2, 3, 6]}) + ":" + job_url

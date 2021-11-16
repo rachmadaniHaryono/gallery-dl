@@ -42,7 +42,6 @@ def test_handler(golden):
         pathlib.Path(__file__).parent / "data" / f"test_items_{name}.yaml"
     ).open() as f:
         job.data = yaml.safe_load(f)["output"]
-    handler = golden["handler"]
     handler_func = getattr(sc, golden["handler"]).handle_job
     res = handler_func(job, collections.defaultdict(set), ())
     sort_list = lambda x: list(sorted(x))
@@ -53,4 +52,5 @@ def test_handler(golden):
                 == golden.out[item[0]]
             )
         elif item[1]:
-            assert v == golden.out[k]
+            # only check when there is value
+            assert item[1] == golden.out[item[0]]

@@ -200,7 +200,7 @@ def send_url(urls: T.List[str]):
     while tqdm.tqdm(not jq.empty()):
         job = jq.get()
         job_url = job.extractor.url
-        tqdm.tqdm.write("qsize:{}:url:{}".format(jq.qsize, job_url))
+        tqdm.tqdm.write(f"qsize:{jq.qsize()}:len_url:{len(url_dict)}:url:{job_url}")
         job.run()
         if any(x[0] not in [2, 3, 6] for x in job.data):
             tqdm.tqdm.write(

@@ -8,11 +8,13 @@
 
 """Extractors for https://twitter.com/"""
 
-from .common import Extractor, Message
-from .. import text, util, exception
-from ..cache import cache
 import json
+
 import tqdm
+
+from .. import exception, text, util
+from ..cache import cache
+from .common import Extractor, Message
 
 BASE_PATTERN = (
     r"(?:https?://)?(?:www\.|mobile\.)?"
@@ -114,6 +116,23 @@ class TwitterExtractor(Extractor):
                         video_info["variants"],
                         key=lambda v: v.get("bitrate", 0),
                     )
+                    if "media_url_https" in media:
+                        url = media["media_url_https"]
+                        base, _, fmt = url.rpartition(".")
+                        base += "?format=" + fmt + "&name="
+                        files.append(
+                            text.nameext_from_url(
+                                url,
+                                {
+                                    "url": base + self._size_image,
+                                    "width": width,
+                                    "height": height,
+                                    "_fallback": self._image_fallback(base),
+                                },
+                            )
+                        )
+                    else:
+                        files.append({"url": media["media_url"]})
                     files.append({
                         "url"     : variant["url"],
                         "width"   : width,

@@ -674,12 +674,6 @@ Consider all sites to be NSFW unless otherwise known.
     <td></td>
 </tr>
 <tr>
-    <td>Seiso</td>
-    <td>https://seiso.party/</td>
-    <td>Favorites, Posts, User Profiles</td>
-    <td>Supported</td>
-</tr>
-<tr>
     <td>Sen Manga</td>
     <td>https://raw.senmanga.com/</td>
     <td>Chapters</td>
@@ -942,6 +936,12 @@ Consider all sites to be NSFW unless otherwise known.
     <td>https://derpibooru.org/</td>
     <td>Galleries, Posts, Search Results</td>
     <td><a href="configuration.rst#extractorderpibooruapi-key">API Key</a></td>
+</tr>
+<tr>
+    <td>Furbooru</td>
+    <td>https://furbooru.org/</td>
+    <td>Galleries, Posts, Search Results</td>
+    <td></td>
 </tr>
 <tr>
     <td>Ponybooru</td>

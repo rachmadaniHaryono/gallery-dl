@@ -99,7 +99,7 @@ class TwitterHandler(BaseHandler):
                 tags.add(tag.replace(":", " "))
             for mention in item[2].get("mentions", []):
                 if (mention_subtag := get_subtag_from_dict(mention)) != author_subtag:
-                    tags.add(f"category:mention:nick:{mention_subtag}")
+                    tags.add(f"category:mention:{mention_subtag}")
             if item[1]:
                 url_dict[item[1]].update(tags)
             for key, subtag in [(author, author_subtag), (user, user_subtag)]:
@@ -124,7 +124,7 @@ class TwitterHandler(BaseHandler):
         return dict(url_dict=url_dict, url_set=url_set, job_list=job_list)
 
 
-class HentaicosplaysGalleryHandler:
+class HentaicosplaysGalleryHandler(BaseHandler):
     extractors = ("HentaicosplaysGalleryExtractor",)
 
     @staticmethod

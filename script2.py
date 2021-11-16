@@ -100,26 +100,18 @@ class TwitterHandler(BaseHandler):
                     tags.add(f"category:mention:nick:{mention_subtag}")
             if item[1]:
                 url_dict[item[1]].update(tags)
-            # profile_banner and profile_image in author section
-            tags = set()
-            tags.add(f"category:{author_subtag}")
-            tags.add("description:" + author["description"])
-            for url in [
-                author["profile_banner"],
-                author["profile_banner"],
-            ]:
-                if not url:
-                    continue
-                url_dict[url].update(tags)
-            # profile_banner and profile_image in author section
-            for url in [
-                user["profile_banner"],
-                user["profile_banner"],
-            ]:
-                if not url:
-                    continue
-                url_dict[url].add("description:" + user["description"])
-                url_dict[url].add(f"category:{user_subtag}")
+            for key, subtag in [(author, author_subtag), (user, user_subtag)]:
+                tags = set()
+                tags.add(f"description:{key['description']}")
+                tags.add(f"category:{subtag}")
+                if url := key.get("url", None):
+                    tags.add(f"url:{url}")
+                for p_url in [
+                    author["profile_banner"],
+                    author["profile_image"],
+                ]:
+                    if p_url:
+                        url_dict[p_url].update(tags)
 
         for item in filter(lambda x: x[0] == 6 and x[1] not in url_set, job.data):
             try:

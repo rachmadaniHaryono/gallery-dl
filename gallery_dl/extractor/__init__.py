@@ -12,6 +12,7 @@ modules = [
     # custom
     "bi_girl",
     "dmm",
+    "invidious",
     # gallery_dl
     "2chan",
     "35photo",

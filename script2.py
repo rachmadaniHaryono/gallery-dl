@@ -10,6 +10,7 @@ from os import path
 from urllib import parse
 
 import hydrus
+import natsort
 import tqdm
 
 from gallery_dl import config
@@ -229,7 +230,7 @@ def send_url(urls: T.List[str]):
             jq.put(item)
 
     err_list = []
-    for item in tqdm.tqdm(sorted(url_dict.items())):
+    for item in tqdm.tqdm(natsort.natsorted(url_dict.items())):
         url, tags = item
         ext = path.splitext(parse.urlparse(url).path)[1].lower()
         tqdm.tqdm.write(str(item))

@@ -16,6 +16,7 @@ python = "^3.9"
 requests = "^2.26.0"
 tqdm = {version = "^4.62.3", extras = ["extra"]}
 hydrus-api = {version = "^2.14.3", extras = ["extra"]}
+natsort = "^8.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"

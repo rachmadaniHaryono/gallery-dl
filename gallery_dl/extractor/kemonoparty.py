@@ -30,11 +30,11 @@ class KemonopartyExtractor(Extractor):
     def items(self):
         self._prepare_ddosguard_cookies()
 
-        find_inline = re.compile(
+        self._find_inline = re.compile(
             r'src="(?:https?://kemono\.party)?(/inline/[^"]+'
             r'|/[0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{64}\.[^"]+)').findall
-        skip_service = \
-            "patreon" if self.config("patreon-skip-file", True) else None
+        find_hash = re.compile("/[0-9a-f]{2}/[0-9a-f]{2}/([0-9a-f]{64})").match
+        generators = self._build_file_generators(self.config("files"))
         comments = self.config("comments")
 
         if self.config("metadata"):
@@ -51,20 +51,6 @@ class KemonopartyExtractor(Extractor):
 
         for post in posts:
 
-            files = []
-            append = files.append
-            file = post["file"]
-
-            if file:
-                file["type"] = "file"
-                if post["service"] != skip_service or not post["attachments"]:
-                    append(file)
-            for attachment in post["attachments"]:
-                attachment["type"] = "attachment"
-                append(attachment)
-            for path in find_inline(post["content"] or ""):
-                append({"path": path, "name": path, "type": "inline"})
-
             post["date"] = text.parse_datetime(
                 post["published"] or post["added"],
                 "%a, %d %b %Y %H:%M:%S %Z")
@@ -74,9 +60,25 @@ class KemonopartyExtractor(Extractor):
                 post["comments"] = self._extract_comments(post)
             yield Message.Directory, post
 
-            for post["num"], file in enumerate(files, 1):
-                post["type"] = file["type"]
+            hashes = set()
+            post["num"] = 0
+            for file in itertools.chain.from_iterable(
+                    g(post) for g in generators):
                 url = file["path"]
+
+                match = find_hash(url)
+                if match:
+                    post["hash"] = hash = match.group(1)
+                    if hash in hashes:
+                        self.log.debug("Skipping %s (duplicate)", url)
+                        continue
+                    hashes.add(hash)
+                else:
+                    post["hash"] = ""
+
+                post["type"] = file["type"]
+                post["num"] += 1
+
                 if url[0] == "/":
                     url = self.root + "/data" + url
                 elif url.startswith("https://kemono.party"):
@@ -103,6 +105,34 @@ class KemonopartyExtractor(Extractor):
             raise exception.AuthenticationError()
 
         return {c.name: c.value for c in response.history[0].cookies}
+
+    def _postfile(self, post):
+        file = post["file"]
+        if not file:
+            return ()
+        file["type"] = "file"
+        return (file,)
+
+    def _attachments(self, post):
+        for attachment in post["attachments"]:
+            attachment["type"] = "attachment"
+        return post["attachments"]
+
+    def _inline(self, post):
+        for path in self._find_inline(post["content"] or ""):
+            yield {"path": path, "name": path, "type": "inline"}
+
+    def _build_file_generators(self, filetypes):
+        if filetypes is None:
+            return (self._postfile, self._attachments, self._inline)
+        genmap = {
+            "postfile"   : self._postfile,
+            "attachments": self._attachments,
+            "inline"     : self._inline,
+        }
+        if isinstance(filetypes, str):
+            filetypes = filetypes.split(",")
+        return [genmap[ft] for ft in filetypes]
 
     def _extract_comments(self, post):
         url = "{}/{}/user/{}/post/{}".format(
@@ -176,6 +206,8 @@ class KemonopartyPostExtractor(KemonopartyExtractor):
                 "embed": dict,
                 "extension": "jpeg",
                 "filename": "P058kDFYus7DbqAkGlfWTlOr",
+                "hash": "210f35388e28bbcf756db18dd516e2d8"
+                        "2ce758e0d32881eeee76d43e1716d382",
                 "id": "506575",
                 "num": 1,
                 "published": "Sun, 11 Aug 2019 02:09:04 GMT",
@@ -189,23 +221,25 @@ class KemonopartyPostExtractor(KemonopartyExtractor):
         }),
         # inline image (#1286)
         ("https://kemono.party/fanbox/user/7356311/post/802343", {
-            "pattern": r"https://kemono\.party/data/inline/fanbox"
-                       r"/uaozO4Yga6ydkGIJFAQDixfE\.jpeg",
+            "pattern": r"https://kemono\.party/data/47/b5/47b5c014ecdcfabdf2c8"
+                       r"5eec53f1133a76336997ae8596f332e97d956a460ad2\.jpg",
+            "keyword": {"hash": "47b5c014ecdcfabdf2c85eec53f1133a"
+                                "76336997ae8596f332e97d956a460ad2"},
         }),
         # kemono.party -> data.kemono.party
         ("https://kemono.party/gumroad/user/trylsc/post/IURjT", {
-            "pattern": r"https://kemono\.party/data/(file|attachment)s"
-                       r"/gumroad/trylsc/IURjT/",
+            "pattern": r"https://kemono\.party/data/("
+                       r"files/gumroad/trylsc/IURjT/reward8\.jpg|"
+                       r"c6/04/c6048f5067fd9dbfa7a8be565ac194efdfb6e4.+\.zip)",
         }),
         # username (#1548, #1652)
         ("https://kemono.party/gumroad/user/3252870377455/post/aJnAH", {
             "options": (("metadata", True),),
             "keyword": {"username": "Kudalyn's Creations"},
         }),
-        # skip patreon main file (#1667, #1689)
+        # skip patreon duplicates
         ("https://kemono.party/patreon/user/4158582/post/32099982", {
             "count": 2,
-            "keyword": {"type": "attachment"},
         }),
         ("https://kemono.party/subscribestar/user/alcorart/post/184330"),
     )

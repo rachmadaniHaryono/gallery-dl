@@ -1338,6 +1338,18 @@ Description
     Extract ``comments`` metadata.
 
 
+extractor.kemonoparty.files
+---------------------------
+Type
+    ``list`` of ``strings``
+Default
+    ``["postfile", "attachments", "inline"]``
+Description
+    Determines the type and order of files to be downloaded.
+
+    Available types are ``postfile``, ``attachments``, and ``inline``.
+
+
 extractor.kemonoparty.max-posts
 -------------------------------
 Type
@@ -1356,16 +1368,6 @@ Default
     ``false``
 Description
     Extract ``username`` metadata
-
-
-extractor.kemonoparty.patreon-skip-file
----------------------------------------
-Type
-    ``bool``
-Default
-    ``true``
-Description
-    Skip main files in Patreon posts to avoid duplicates.
 
 
 extractor.khinsider.format

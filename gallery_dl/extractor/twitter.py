@@ -157,7 +157,7 @@ class TwitterExtractor(Extractor):
                 files.append({"url": media["media_url"]})
 
     def _image_fallback(self, base):
-        for fmt in getattr(self, "_size_fallback", []):
+        for fmt in self._size_fallback:
             yield base + fmt
 
     def _extract_card(self, tweet, files):
@@ -618,7 +618,6 @@ class TwitterImageExtractor(Extractor):
         base = "https://pbs.twimg.com/media/{}?format={}&name=".format(
             self.id, self.fmt)
 
-        self._size_fallback = ("large", "medium", "small")
         data = {
             "filename": self.id,
             "extension": self.fmt,

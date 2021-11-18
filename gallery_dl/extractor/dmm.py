@@ -8,7 +8,7 @@ from urllib import parse
 
 import bs4
 
-from .common import Extractor, Message
+from .common import Extractor, Message, get_soup
 
 
 class DmmExtractor(Extractor):
@@ -67,12 +67,6 @@ class DmmDigitalExtractor(DmmExtractor):
         self.cid = match.groups()[1]
 
     def items(self):
-        def get_soup(markup):
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                soup = bs4.BeautifulSoup(markup)
-            return soup
-
         soup = get_soup(self.request(self.url).content)  # type: ignore
         links = [
             href

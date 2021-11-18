@@ -8,18 +8,22 @@
 
 """Common classes and constants used by extractor modules."""
 
-import re
-import ssl
-import time
+import datetime
+import logging
 import netrc
 import queue
-import logging
-import datetime
-import requests
+import re
+import ssl
 import threading
+import time
+import warnings
+
+import bs4
+import requests
 from requests.adapters import HTTPAdapter
+
+from .. import config, exception, text, util
 from .message import Message
-from .. import config, text, util, exception
 
 
 class Extractor():
@@ -684,6 +688,12 @@ def _emulate_browser_chrome(session, platform):
         "AES256-SHA:"
         "DES-CBC3-SHA"
     ))
+
+def get_soup(markup):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        soup = bs4.BeautifulSoup(markup)
+    return soup
 
 
 # Undo automatic pyOpenSSL injection by requests

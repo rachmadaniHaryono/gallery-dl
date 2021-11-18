@@ -10,7 +10,12 @@ import pytest
 import yaml
 
 import script2 as sc
+from gallery_dl import extractor
 from gallery_dl.job import DataJob, config
+
+
+def sorted_list(inp: T.Iterable[T.Any]) -> T.List[T.Any]:
+    return list(sorted(inp))
 
 
 @pytest.mark.golden_test("data/test_extractor_*.yaml")
@@ -75,9 +80,6 @@ def test_handler(golden):
 
 @pytest.mark.golden_test("data/test_url_*.yaml")
 def test_url(golden):
-    def sorted_list(inp: T.Iterable[T.Any]) -> T.List[T.Any]:
-        return list(sorted(inp))
-
     output_data = []
     for url in golden["urls"]:
         try:
@@ -86,4 +88,19 @@ def test_url(golden):
             logging.error("url:%s", url)
             raise err
     assert sorted_list(output_data) == golden.out["outputs"]
-    assert sorted_list(golden["urls"]) == golden.out["urls"]
+    assert sorted_list(set(golden["urls"])) == golden.out["urls"]
+
+
+@pytest.mark.golden_test("data/test_replace_url_*.yaml")
+def test_replace_url(golden):
+    output_data = []
+    for url in golden["urls"]:
+        try:
+            output_data.append(
+                [url, getattr(extractor, golden["extractor"]).replace_url(url)]
+            )
+        except Exception as err:
+            logging.error("url:%s", url)
+            raise err
+    assert sorted_list(output_data) == golden.out["outputs"]
+    assert sorted_list(set(golden["urls"])) == golden.out["urls"]

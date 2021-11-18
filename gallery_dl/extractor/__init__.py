@@ -13,6 +13,7 @@ modules = [
     "bi_girl",
     "dmm",
     "invidious",
+    "sokmil",
     # gallery_dl
     "2chan",
     "35photo",

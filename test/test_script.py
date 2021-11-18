@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import collections
+import os
 import pathlib
 import typing as T
 from unittest import mock
@@ -27,6 +28,7 @@ import logging
 def test_items(golden, caplog):
     config.load()
     job = DataJob(golden["url"])
+    job.file = open(os.devnull, "w")
     with caplog.at_level(logging.DEBUG):
         job.run()
     output_data = collections.defaultdict(list)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import collections
+import logging
 import os
 import pathlib
 import typing as T
@@ -25,14 +26,16 @@ def test_extractor(golden):
     ] == golden.out["output"]
 
 
-import logging
 
 
 @pytest.mark.golden_test("data/test_items_*.yaml")
 @pytest.mark.vcr()
 def test_items(golden, caplog):
     config.load()
-    job = DataJob(golden["url"])
+    url: str = golden["url"]
+    if golden.get("skip"):
+        pytest.skip(url)
+    job = DataJob(url)
     job.file = open(os.devnull, "w")
     with caplog.at_level(logging.DEBUG):
         job.run()
@@ -43,13 +46,15 @@ def test_items(golden, caplog):
         output_data = {k: list(sorted(v)) for k, v in output_data.items()}
     except TypeError:
         output_data = {k: list(v) for k, v in output_data.items()}
-    assert output_data == golden.out["output"]
+    assert output_data == golden.out.get("output")
     debug_data = collections.defaultdict(set)
     for item in caplog.record_tuples:
         if item[0] == job.extractor.category and item[1] == logging.DEBUG:
             parts = item[2].split(",", 1)
             debug_data[parts[0]].add(parts[1])
-    assert {k: list(sorted(v)) for k, v in debug_data.items()} == golden.out["debug"]
+    assert {k: list(sorted(v)) for k, v in debug_data.items()} == golden.out.get(
+        "debug"
+    )
 
 
 @pytest.mark.golden_test("data/test_handler_*.yaml")

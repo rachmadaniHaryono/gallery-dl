@@ -187,8 +187,6 @@ class SankakuHandler:
         return dict(url_dict=url_dict, url_set=url_set, job_list=job_list)
 
 
-import contextlib
-import pprint
 
 
 def send_url(urls: T.List[str]):
@@ -207,8 +205,8 @@ def send_url(urls: T.List[str]):
         job = jq.get()
         job_url = job.extractor.url
         tqdm.tqdm.write(f"qsize:{jq.qsize()}:len_url:{len(url_dict)}:url:{job_url}")
-        with contextlib.redirect_stdout(open(os.devnull, "w")):
-            job.run()
+        job.file = open(os.devnull, "w")
+        job.run()
         dict_to_print = collections.defaultdict(list)
         for item in job.data:
             dict_to_print[item[0]].append(list(item[1:]))

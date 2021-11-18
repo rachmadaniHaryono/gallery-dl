@@ -3,6 +3,7 @@
 
 import re
 import typing as T
+import warnings
 from urllib import parse
 
 import bs4
@@ -15,7 +16,7 @@ class DmmExtractor(Extractor):
 
 
 class DmmAlExtractor(DmmExtractor):
-    pattern = r"(?:https?://)?al\.dmm.co.jp/\?lurl=https%3A%2F%2Fwww.dmm.co.jp%2Fdigital%2Fvideoa%2F-%2Fdetail%2F%3D%2Fcid%3D.+"
+    pattern = r"(?:https?://)?al\.dmm.co.jp/\?lurl=https%3A%2F%2Fwww.dmm.co.jp%2Fdigital%2Fvideo.*%2F-%2Fdetail%2F%3D%2Fcid%3D.+"
     subcategory = "al"
 
     def items(self):
@@ -26,6 +27,12 @@ class DmmAlExtractor(DmmExtractor):
 
 def replace_url(inp: str) -> T.Optional[str]:
     netloc = parse.urlparse(inp).netloc
+    if netloc in ("pics.dmm.co.jp"):
+        patt = r"(/digital/+amateur/+\w+\d+/+\w+\d+\w+)s(-\d+\.[^/.]+)(?:[?#].*)?$"
+        if (
+            new_url := re.sub(patt, lambda x: x.group(1) + "p" + x.group(2), inp)
+        ) and new_url != inp:
+            return new_url
     if netloc in ("pics.r18.com", "pics.dmm.co.jp", "pics.avdmm.top"):
         patt = r"(/digital/+video/+(h_)?[0-9a-z]+[0-9]+/+(h_)?[0-9a-z]+[0-9]+)(-[0-9]+\.[^/.]+)(?:[?#].*)?$"
         if (
@@ -50,7 +57,9 @@ class DmmPicsExtractor(DmmExtractor):
 
 
 class DmmDigitalExtractor(DmmExtractor):
-    pattern = r"(?:https?://)?(www.)?dmm.co.jp/digital/videoa/-/detail/=/cid=([^/]+)/?"
+    pattern = (
+        r"(?:https?://)?(www.)?dmm.co.jp/digital/video[^/]*/-/detail/=/cid=([^/]+)/?"
+    )
     subcategory = "digital"
 
     def __init__(self, match):
@@ -58,7 +67,13 @@ class DmmDigitalExtractor(DmmExtractor):
         self.cid = match.groups()[1]
 
     def items(self):
-        soup = bs4.BeautifulSoup(self.request(self.url).content)  # type: ignore
+        def get_soup(markup):
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                soup = bs4.BeautifulSoup(markup)
+            return soup
+
+        soup = get_soup(self.request(self.url).content)  # type: ignore
         links = [
             href
             for x in soup.find_all("a")
@@ -66,7 +81,7 @@ class DmmDigitalExtractor(DmmExtractor):
         ]
         if links:
             self.log.debug("new request,%s", links[0])
-            soup = bs4.BeautifulSoup(self.request(links[0]).content)  # type: ignore
+            soup = get_soup(self.request(links[0]).content)  # type: ignore
         rows = [x for x in soup.select("div.page-detail table tr")]
         rows_data = []
         for row in rows:
@@ -99,10 +114,18 @@ class DmmDigitalExtractor(DmmExtractor):
             if not new_url:
                 new_url = src
             urls.add(new_url)
-        img_url = soup.select_one("div#sample-video.center a img").get("src")  # type: ignore
-        urls.add(img_url)
+        img_url = None
+        for css_path in [
+            "div#sample-video.center a img",
+            "div#sample-video.center img",
+        ]:
+            if html_tag := soup.select_one(css_path):
+                img_url = html_tag.get("src")
+                urls.add(img_url)
+                break
         urls.add(soup.select_one("div#sample-video.center a").get("href"))  # type: ignore
-        if new_url := replace_url(img_url):  # type: ignore
+        if img_url and (new_url := replace_url(img_url)):  # type: ignore
             urls.add(new_url)
         for url in urls:
-            yield Message.Url, url, data
+            if not url.startswith("javascript:"):
+                yield Message.Url, url, data

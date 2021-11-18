@@ -36,9 +36,9 @@ class InvidiousChannelExtractor(InvidiousExtractor):
         yield Message.Queue, get_api_channel_url(self.channel_id, self.page), {}
 
 
-class InvidiousApichannelExtractor(InvidiousExtractor):
+class InvidiousApiChannelsExtractor(InvidiousExtractor):
     pattern = BASE_PATTERN + r"/api/v1/channels/((([^/?])+/videos)|(videos/([^/?]+)))"
-    subcategory = "api/channels"
+    subcategory = "api-channels"
 
     def __init__(self, match):
         super().__init__(match)

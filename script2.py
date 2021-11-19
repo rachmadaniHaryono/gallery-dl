@@ -47,8 +47,12 @@ class BaseHandler:
         item: T.List[T.Any]
         for item in filter(lambda x: x[0] == 3, job.data):
             for key, namespace in key_dict.items():
-                for subtag in item[2].get(key, []):
-                    url_dict[item[1]].add(namespace + subtag)
+                subitem: T.Union[str, T.List[str]] = item[2].get(key, [])
+                if isinstance(subitem, str):
+                    url_dict[item[1]].add(namespace + subitem)
+                else:
+                    for subtag in subitem:
+                        url_dict[item[1]].add(namespace + subtag)
             if item[1] not in url_dict:
                 url_dict[item[1]] = set()
         for item in filter(lambda x: x[0] == 6 and x[1] not in url_set, job.data):

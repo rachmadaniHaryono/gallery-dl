@@ -145,6 +145,33 @@ class HentaicosplaysGalleryHandler(BaseHandler):
         return dict(url_dict=url_dict, url_set=url_set, job_list=job_list)
 
 
+class RedditHandler(BaseHandler):
+    extractors = ("RedditSubmissionExtractor",)
+
+    @staticmethod
+    def handle_job(
+        job: DataJob, url_dict: UrlDictType, url_set: UrlSetType
+    ) -> HandleJobResultType:
+        job_list = []
+
+        for item in filter(lambda x: x[0] == 3, job.data):
+            if item[1] not in url_dict:
+                url_dict[item[1]] = set()
+            for key, tag_fmt in (
+                ("author", "uploader:{subtag}"),
+                ("link_flair_text", "category:{subtag}"),
+                ("permalink", "url:https://www.reddit.com{subtag}"),
+                ("subreddit", "category:subreddit:{subtag}"),
+                ("title", "description:{subtag}"),
+            ):
+                if subtag := item[2].get(key, None):
+                    url_dict[item[1]].add(tag_fmt.format(subtag=subtag))
+
+        return HandleJobResultType(
+            url_dict=url_dict, url_set=url_set, job_list=job_list
+        )
+
+
 class ReactorHandler:
     extractors = ("ReactorTagExtractor", "ReactorExtractor")
 
@@ -219,6 +246,7 @@ def send_url(urls: T.List[str]):
         for handler in [
             HentaicosplaysGalleryHandler,
             ReactorHandler,
+            RedditHandler,
             SankakuHandler,
             TwitterHandler,
         ]:

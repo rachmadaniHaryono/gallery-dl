@@ -19,15 +19,6 @@ def sorted_list(inp: T.Iterable[T.Any]) -> T.List[T.Any]:
     return list(sorted(inp))
 
 
-@pytest.mark.golden_test("data/test_extractor_*.yaml")
-def test_extractor(golden):
-    assert [
-        DataJob(url).extractor.__class__.__name__ for url in golden["urls"]
-    ] == golden.out["output"]
-
-
-
-
 @pytest.mark.golden_test("data/test_items_*.yaml")
 @pytest.mark.vcr()
 def test_items(golden, caplog):
@@ -55,6 +46,7 @@ def test_items(golden, caplog):
     assert {k: list(sorted(v)) for k, v in debug_data.items()} == golden.out.get(
         "debug"
     )
+    assert job.extractor.__class__.__name__ == golden.out.get("extractor")
 
 
 @pytest.mark.golden_test("data/test_handler_*.yaml")

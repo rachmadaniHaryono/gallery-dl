@@ -64,7 +64,7 @@ def test_handler(golden):
         for v in vals:
             job.data.append([k] + list(v))
     handler_func = getattr(sc, golden["handler"]).handle_job
-    res = handler_func(job, collections.defaultdict(set), ())
+    res = handler_func(job, collections.defaultdict(set))
     sort_list = lambda x: list(sorted(x))
     for item in res.items():
         if item[0] == "url_dict":

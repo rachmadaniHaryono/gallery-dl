@@ -51,7 +51,7 @@ class SokmilImgExtractor(SokmilExtractor):
 
 
 class SokmilPostExtractor(SokmilExtractor):
-    pattern = BASE_PATTERN + r"/av/_item/item\d+.htm(\?.*)?"
+    pattern = BASE_PATTERN + r"/(av|idol)/_item/item\d+.htm(\?.*)?"
     subcategory = "post"
 
     def items(self):

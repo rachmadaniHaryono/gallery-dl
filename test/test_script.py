@@ -15,8 +15,8 @@ from gallery_dl import extractor
 from gallery_dl.job import DataJob, config
 
 
-def sorted_list(inp: T.Iterable[T.Any]) -> T.List[T.Any]:
-    return list(sorted(inp))
+def sorted_list(inp: T.Iterable[T.Any], **kwargs) -> T.List[T.Any]:
+    return list(sorted(inp, **kwargs))
 
 
 @pytest.mark.golden_test("data/test_items_*.yaml")
@@ -34,16 +34,18 @@ def test_items(golden, caplog):
     for item in job.data:
         output_data[item[0]].append([x for x in item[1:] if x])
     try:
-        output_data = {k: list(sorted(v)) for k, v in output_data.items()}
+        output_data = {k: sorted_list(set(v)) for k, v in output_data.items()}
     except TypeError:
-        output_data = {k: list(v) for k, v in output_data.items()}
+        output_data = {
+            k: sorted_list(v, key=lambda x: x[0]) for k, v in output_data.items()
+        }
     assert output_data == golden.out.get("output")
     debug_data = collections.defaultdict(set)
     for item in caplog.record_tuples:
         if item[0] == job.extractor.category and item[1] == logging.DEBUG:
             parts = item[2].split(",", 1)
             debug_data[parts[0]].add(parts[1])
-    assert {k: list(sorted(v)) for k, v in debug_data.items()} == golden.out.get(
+    assert {k: sorted_list(set(v)) for k, v in debug_data.items()} == golden.out.get(
         "debug"
     )
     assert job.extractor.__class__.__name__ == golden.out.get("extractor")

@@ -42,6 +42,13 @@ HandleJobResultType = T.TypedDict(
 )
 
 
+def create_tag(subtag: str, namespace: T.Optional[str] = None) -> str:
+    if namespace:
+        return namespace + subtag
+    c_subtag = subtag.replace(":", " ")
+    return c_subtag[1:] if c_subtag.startswith("#") else c_subtag
+
+
 class BaseHandler:
     """base handler.
 
@@ -60,23 +67,25 @@ class BaseHandler:
 
         """
         key_dict = {
+            "description": "description:",
             "category_": "category:",
-            "thread": "thread:",
-            "person": "person:",
-            "title": "title:",
             "label": "label:",
-            "series": "series:",
             "person": "person:",
+            "series": "series:",
+            "thread": "thread:",
+            "title": "title:",
+            "url": "url:",
+            "hashtags": "",
         }
         item: T.List[T.Any]
         for item in filter(lambda x: x[0] == 3, job.data):
             for key, namespace in key_dict.items():
                 subitem: T.Union[str, T.List[str]] = item[2].get(key, [])
                 if isinstance(subitem, str):
-                    url_dict[item[1]].add(namespace + subitem)
+                    url_dict[item[1]].add(create_tag(subitem, namespace))
                 else:
                     for subtag in subitem:
-                        url_dict[item[1]].add(namespace + subtag)
+                        url_dict[item[1]].add(create_tag(subtag, namespace))
             if item[1] not in url_dict:
                 url_dict[item[1]] = set()
         return HandleJobResultType(url_dict=url_dict)

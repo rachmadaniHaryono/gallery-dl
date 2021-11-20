@@ -21,20 +21,44 @@ from gallery_dl.job import DataJob
 UrlSetType = T.Set[str]
 UrlDictType = collections.defaultdict[str, T.Set[str]]
 DataJobListType = T.List[DataJob]
+ErrorItemType = T.TypedDict(
+    "ErrorItemType",
+    {
+        "err": T.Union[NoExtractorError, hydrus.MissingParameter],
+        "url": str,
+        "tags": T.Any,
+        "target_url": T.Optional[str],
+    },
+)
 HandleJobResultType = T.TypedDict(
     "HandleJobResultType",
-    {"url_dict": UrlDictType, "url_set": UrlSetType, "job_list": DataJobListType},
+    {
+        "url_dict": UrlDictType,
+        "url_set": UrlSetType,
+        "job_list": DataJobListType,
+        "error_list": T.List[ErrorItemType],
+    },
+    total=False,
 )
 
 
 class BaseHandler:
+    """base handler.
+
+    url_set is used to avoid duplicate url when creating new job.
+    """
     extractors: T.Sequence[str]
 
     @staticmethod
-    def handle_job(
-        job: DataJob, url_dict: UrlDictType, url_set: UrlSetType
-    ) -> HandleJobResultType:
-        job_list: DataJobListType = []
+    def handle_job(job: DataJob, url_dict: UrlDictType) -> HandleJobResultType:
+        """handle job data.
+
+        Args:
+            job: data job
+            url_dict: url and tags
+            url_set: unique urls
+
+        """
         key_dict = {
             "category_": "category:",
             "thread": "thread:",
@@ -44,6 +68,8 @@ class BaseHandler:
             "series": "series:",
             "person": "person:",
         }
+        if not url_set:
+            logging.debug("no url_set, job".format(job))
         item: T.List[T.Any]
         for item in filter(lambda x: x[0] == 3, job.data):
             for key, namespace in key_dict.items():
@@ -55,14 +81,26 @@ class BaseHandler:
                         url_dict[item[1]].add(namespace + subtag)
             if item[1] not in url_dict:
                 url_dict[item[1]] = set()
+        return HandleJobResultType(url_dict=url_dict)
+
+    @staticmethod
+    def iter_queue_urls(job: DataJob, url_set: T.Optional[UrlSetType] = None):
+        if url_set is None:
+            url_set = set()
+        error_list: T.List[ErrorItemType] = []
+        job_list = []
         for item in filter(lambda x: x[0] == 6 and x[1] not in url_set, job.data):
             try:
                 job_list.append(DataJob(item[1]))
-            except NoExtractorError:
-                logging.error("no extractor, url: " + item[1])
+            except NoExtractorError as err:
+                error_list.append(
+                    ErrorItemType(
+                        err=err, url=job.extractor.url, tags=None, target_url=item[1]
+                    )
+                )
             url_set.add(item[1])
         return HandleJobResultType(
-            url_dict=url_dict, url_set=url_set, job_list=job_list
+            url_set=url_set, job_list=job_list, error_list=error_list
         )
 
 
@@ -75,9 +113,7 @@ class TwitterHandler(BaseHandler):
     )
 
     @staticmethod
-    def handle_job(job, url_dict, url_set):
-        job_list = []
-
+    def handle_job(job, url_dict):
         def get_subtag_from_dict(inp_dict: T.Dict[str, str]) -> str:
             return (
                 inp_dict["name"]
@@ -118,46 +154,28 @@ class TwitterHandler(BaseHandler):
                 ]:
                     if p_url:
                         url_dict[p_url].update(tags)
-
-        for item in filter(lambda x: x[0] == 6 and x[1] not in url_set, job.data):
-            try:
-                job_list.append(DataJob(item[1]))
-            except NoExtractorError:
-                logging.error("no extractor, url: " + item[1])
-            url_set.add(item[1])
-        return dict(url_dict=url_dict, url_set=url_set, job_list=job_list)
+        return dict(url_dict=url_dict)
 
 
 class HentaicosplaysGalleryHandler(BaseHandler):
     extractors = ("HentaicosplaysGalleryExtractor",)
 
     @staticmethod
-    def handle_job(job, url_dict, url_set):
-        job_list = []
+    def handle_job(job, url_dict):
         for item in filter(lambda x: x[0] == 3, job.data):
             subtag = item[2].get("title", None)
             if subtag:
                 url_dict[item[1]].add("thread:" + subtag)
             if item[1] not in url_dict:
                 url_dict[item[1]] = set()
-        for item in filter(lambda x: x[0] == 6 and x[1] not in url_set, job.data):
-            try:
-                job_list.append(DataJob(item[1]))
-            except NoExtractorError:
-                logging.error("no extractor, url: " + item[1])
-            url_set.add(item[1])
-        return dict(url_dict=url_dict, url_set=url_set, job_list=job_list)
+        return dict(url_dict=url_dict)
 
 
 class RedditHandler(BaseHandler):
     extractors = ("RedditSubmissionExtractor",)
 
     @staticmethod
-    def handle_job(
-        job: DataJob, url_dict: UrlDictType, url_set: UrlSetType
-    ) -> HandleJobResultType:
-        job_list = []
-
+    def handle_job(job: DataJob, url_dict: UrlDictType) -> HandleJobResultType:
         for item in filter(lambda x: x[0] == 3, job.data):
             if item[1] not in url_dict:
                 url_dict[item[1]] = set()
@@ -171,51 +189,35 @@ class RedditHandler(BaseHandler):
                 if subtag := item[2].get(key, None):
                     url_dict[item[1]].add(tag_fmt.format(subtag=subtag))
 
-        return HandleJobResultType(
-            url_dict=url_dict, url_set=url_set, job_list=job_list
-        )
+        return HandleJobResultType(url_dict=url_dict)
 
 
-class ReactorHandler:
+class ReactorHandler(BaseHandler):
     extractors = ("ReactorTagExtractor", "ReactorExtractor")
 
     @staticmethod
-    def handle_job(job, url_dict, url_set):
-        job_list = []
+    def handle_job(job, url_dict):
         for item in filter(lambda x: x[0] == 3, job.data):
             for tag in item[2].get("tags", []):
                 if tag:
                     url_dict[item[1]].add(tag.replace(":", " "))
             if item[1] not in url_dict:
                 url_dict[item[1]] = set()
-        for item in filter(lambda x: x[0] == 6 and x[1] not in url_set, job.data):
-            try:
-                job_list.append(DataJob(item[1]))
-            except NoExtractorError:
-                logging.error("no extractor, url: " + item[1])
-            url_set.add(item[1])
-        return dict(url_dict=url_dict, url_set=url_set, job_list=job_list)
+        return HandleJobResultType(url_dict=url_dict)
 
 
-class SankakuHandler:
+class SankakuHandler(BaseHandler):
     extractors = ("SankakuExtractor", "SankakuPostExtractor")
 
     @staticmethod
-    def handle_job(job, url_dict, url_set):
-        job_list = []
+    def handle_job(job, url_dict):
         for item in filter(lambda x: x[0] == 3, job.data):
             for tag in item[2].get("tag_string", "").split():
                 if tag:
                     url_dict[item[1]].add(tag.replace(":", " ").replace("_", " "))
             if item[1] not in url_dict:
                 url_dict[item[1]] = set()
-        for item in filter(lambda x: x[0] == 6 and x[1] not in url_set, job.data):
-            try:
-                job_list.append(DataJob(item[1]))
-            except NoExtractorError:
-                logging.error("no extractor, url: " + item[1])
-            url_set.add(item[1])
-        return dict(url_dict=url_dict, url_set=url_set, job_list=job_list)
+        return HandleJobResultType(url_dict=url_dict)
 
 
 
@@ -232,6 +234,7 @@ def send_url(urls: T.List[str]):
             raise err
     url_dict: UrlDictType = collections.defaultdict(set)
     url_set = set(urls)
+    err_list: T.List[ErrorItemType] = []
     while tqdm.tqdm(not jq.empty()):
         job = jq.get()
         job_url = job.extractor.url
@@ -255,22 +258,23 @@ def send_url(urls: T.List[str]):
             TwitterHandler,
         ]:
             if job.extractor.__class__.__name__ in handler.extractors:
-                handle_func = handler.handle_job
+                cls = handler
                 break
         else:
-            handle_func = BaseHandler.handle_job
-        res = handle_func(job, url_dict, url_set)
-        for key, val in res.get("url_dict", {}).items():
-            if not key:
-                logging.debug("No key" + str(dict(key=key, tags=val)))
-                continue
-            url_dict[key].update(val)
-        for item in res.get("url_set", set()):
-            url_set.add(item)
-        for item in res.get("job_list", []):
-            jq.put(item)
+            cls = BaseHandler
+        for res in [cls.handle_job(job, url_dict), cls.iter_queue_urls(job, url_set)]:
+            for key, val in res.get("url_dict", {}).items():
+                if not key:
+                    logging.debug("No key" + str(dict(key=key, tags=val)))
+                    continue
+                url_dict[key].update(val)
+            for item in res.get("url_set", set()):
+                url_set.add(item)
+            for item in res.get("job_list", []):
+                jq.put(item)
+            for item in res.get("error_list", []):
+                err_list.append(item)
 
-    err_list = []
     for item in tqdm.tqdm(natsort.natsorted(url_dict.items())):
         url, tags = item
         ext = path.splitext(parse.urlparse(url).path)[1].lower()
@@ -283,5 +287,15 @@ def send_url(urls: T.List[str]):
         try:
             cl.add_url(**kwargs)
         except hydrus.MissingParameter as err:
-            err_list.append((err, url, tags))
-    [logging.error("{}:url:{}:tags:{}".format(*x)) for x in err_list]
+            err_list.append(ErrorItemType(err=err, url=url, tags=tags, target_url=None))
+    for err in err_list:
+        msg_parts = [
+            err["err"].__class__.__name__,
+            (":" + str(err["err"]) if err["err"] else ""),
+            "url",
+            err["url"],
+        ]
+        for key in ["target_url", "tags"]:
+            if val := err.get(key, None):
+                msg_parts.extend([" " + key, str(val)])
+        logging.error(":".join(msg_parts))

@@ -68,8 +68,6 @@ class BaseHandler:
             "series": "series:",
             "person": "person:",
         }
-        if not url_set:
-            logging.debug("no url_set, job".format(job))
         item: T.List[T.Any]
         for item in filter(lambda x: x[0] == 3, job.data):
             for key, namespace in key_dict.items():

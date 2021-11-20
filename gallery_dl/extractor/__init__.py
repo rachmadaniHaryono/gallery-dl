@@ -14,6 +14,7 @@ modules = [
     "bakufu",
     "dmm",
     "invidious",
+    "nitter",
     "sokmil",
     "t",
     # gallery_dl

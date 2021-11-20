@@ -227,6 +227,53 @@ class SankakuHandler(BaseHandler):
         return HandleJobResultType(url_dict=url_dict)
 
 
+class NhentaiHandler(BaseHandler):
+    extractors = ("NhentaiGalleryExtractor",)
+
+    @staticmethod
+    def handle_job(job, url_dict):
+        for item in filter(lambda x: x[0] == 3, job.data):
+            if item[1] not in url_dict:
+                url_dict[item[1]] = set()
+            title = None
+            for key in ("title", "title_en", "title_ja"):
+                if c_val := item[2].get(key, None):
+                    if title is None:
+                        title = c_val
+                        continue
+                    if title == c_val:
+                        continue
+                    else:
+                        url_dict[item[1]].add("description:{key}{c_val}")
+            if title:
+                url_dict[item[1]].add(f"title:{title}")
+            if val := item[2].get("num", None):
+                url_dict[item[1]].add(f"page:{val}")
+            for key, mark in (
+                ("scanlator", "scanlator"),
+                ("artist", "artist"),
+                ("group", "group"),
+                ("parody", "series"),
+                ("characters", "character"),
+                ("tags", ""),
+                ("type", ""),
+                ("language", "language"),
+            ):
+                val = item[2].get(key, None)
+                if not val:
+                    pass
+                elif isinstance(val, list):
+                    [
+                        url_dict[item[1]].add(
+                            ":".join(["category", mark, x] if mark else ["category", x])
+                        )
+                        for x in val
+                    ]
+                else:
+                    url_dict[item[1]].add(
+                        ":".join(["category", mark, val] if mark else ["category", val])
+                    )
+        return HandleJobResultType(url_dict=url_dict)
 
 
 def send_url(urls: T.List[str]):
@@ -259,6 +306,7 @@ def send_url(urls: T.List[str]):
             )
         for handler in [
             HentaicosplaysGalleryHandler,
+            NhentaiHandler,
             ReactorHandler,
             RedditHandler,
             SankakuHandler,

@@ -244,7 +244,7 @@ class NhentaiHandler(BaseHandler):
                     if title == c_val:
                         continue
                     else:
-                        url_dict[item[1]].add(f"description:{key}{c_val}")
+                        url_dict[item[1]].add(f"description:{key}:{c_val}")
             if title:
                 url_dict[item[1]].add(f"title:{title}")
             if val := item[2].get("num", None):

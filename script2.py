@@ -24,7 +24,7 @@ DataJobListType = T.List[DataJob]
 ErrorItemType = T.TypedDict(
     "ErrorItemType",
     {
-        "err": T.Union[NoExtractorError, hydrus.MissingParameter],
+        "err": T.Union[NoExtractorError, hydrus.MissingParameter, ValueError],
         "url": str,
         "tags": T.Any,
         "target_url": T.Optional[str],
@@ -332,6 +332,16 @@ def send_url(urls: T.List[str]):
 
     for item in tqdm.tqdm(natsort.natsorted(url_dict.items())):
         url, tags = item
+        if url.startswith("ytdl:"):
+            err_list.append(
+                ErrorItemType(
+                    err=ValueError("ytdl not supported"),
+                    url=url,
+                    tags=tags,
+                    target_url=None,
+                )
+            )
+            continue
         ext = path.splitext(parse.urlparse(url).path)[1].lower()
         tqdm.tqdm.write(str(item))
         kwargs = {"url": url}
@@ -346,7 +356,7 @@ def send_url(urls: T.List[str]):
     for err in err_list:
         msg_parts = [
             err["err"].__class__.__name__,
-            (":" + str(err["err"]) if err["err"] else ""),
+            (str(err["err"]) if err["err"] else ""),
             "url",
             err["url"],
         ]

@@ -53,6 +53,80 @@ class DmmPicsExtractor(DmmExtractor):
             yield Message.Url, new_url, {}
 
 
+class DmmListExtractor(DmmExtractor):
+    #  https://www.dmm.co.jp/mono/dvd/-/list/=/article=actress/id=1049284/
+    pattern = r"(?:https?://)?(www.)?dmm.co.jp/mono/dvd/-/list/=/article="
+    subcategory = "list"
+
+    def __init__(self, match):
+        super().__init__(match)
+        self.exclude_external_netloc = self.config("exclude_external_netloc", [])
+        self.exclude_external_regex = self.config("exclude_external_regex", [])
+
+    def items(self):
+        soup = get_soup(self.request(self.url).content)
+        links = [
+            href
+            for x in soup.find_all("a")
+            if (href := x.get("href")) and "dmm.co.jp/age_check/=/declared=yes/" in href
+        ]
+        if links:
+            self.log.debug("new request,%s", links[0])
+            soup = get_soup(self.request(links[0]).content)
+
+        def get_tag_val(bs4_soup, css_path, attr) -> T.List[str]:
+            return [
+                attr_val for x in bs4_soup.select(css_path) if (attr_val := x.get(attr))
+            ]
+
+        for val in {
+            *get_tag_val(soup, "div.d-item ul#list li  p.tmb a", "href"),
+            *get_tag_val(soup, "img", "src"),
+        }:
+            if val.startswith("#"):
+                continue
+            if val.startswith("//"):
+                val = "https" + val
+            elif val.startswith("/"):
+                val = parse.urljoin(self.url, val)
+            cont = False
+            for cond, dbg_msg in [
+                (
+                    lambda: parse.urlparse(val).netloc in self.exclude_external_netloc,
+                    "exclude netloc,%s",
+                ),
+                (
+                    lambda: self.exclude_external_regex
+                    and any(re.match(x, val) for x in self.exclude_external_regex),
+                    "exclude regex,%s",
+                ),
+            ]:
+                if cond():
+                    self.log.debug(dbg_msg, val)
+                    cont = True
+                    break
+            if cont:
+                continue
+            yield Message.Queue, val, {}
+        #  dmm7
+        if html_tags := [
+            x.get("href")
+            for x in soup.select("div.list-boxcaptside.list-boxpagenation ul li a")
+            if x.text == "次へ"
+        ]:
+            if len(html_tags) > 1:
+                self.log.warning(
+                    "value return more,%s", str([str(x) for x in html_tags])
+                )
+            next_url_val = html_tags[0]
+            if not next_url_val or isinstance(val, list):
+                self.log.warning("unexpected value,%s", str(next_url_val))
+                return
+            elif next_url_val.startswith("/"):
+                next_url_val = parse.urljoin(self.url, next_url_val)
+            yield Message.Queue, next_url_val, {}
+
+
 class DmmDigitalExtractor(DmmExtractor):
     pattern = r"(?:https?://)?(www.)?dmm.co.jp/((digital/video[^/]*|mono/dvd)/-/detail/=/cid=([^/]+)/?|)"
     subcategory = "digital"

@@ -91,7 +91,7 @@ class DmmListExtractor(DmmExtractor):
             if val.startswith("#"):
                 continue
             if val.startswith("//"):
-                val = "https" + val
+                val = "https:" + val
             elif val.startswith("/"):
                 val = parse.urljoin(self.url, val)
             cont = False
@@ -124,7 +124,7 @@ class DmmListExtractor(DmmExtractor):
                     "value return more,%s", str([str(x) for x in html_tags])
                 )
             next_url_val = html_tags[0]
-            if not next_url_val or isinstance(val, list):
+            if not next_url_val or isinstance(next_url_val, list):
                 self.log.warning("unexpected value,%s", str(next_url_val))
                 return
             elif next_url_val.startswith("/"):

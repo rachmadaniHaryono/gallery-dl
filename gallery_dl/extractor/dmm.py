@@ -38,6 +38,11 @@ def replace_url(inp: str) -> T.Optional[str]:
             return new_url
 
     if netloc in ("pics.dmm.co.jp", "pics.dmm.com"):
+        patt = r"(/mono/movie/adult/[^/]+/\w+)t(\.[^/.]+)(?:[?#].*)?$"
+        if (
+            new_url := re.sub(patt, lambda x: x.group(1) + "l" + x.group(2), inp)
+        ) and new_url != inp:
+            return new_url
         patt = r"s(\.[^/.]*)$"
         if new_url := re.sub(patt, lambda x: "l" + x.group(1), inp):  # type: ignore
             return new_url

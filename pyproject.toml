@@ -32,7 +32,8 @@ nitter-scraper = "^0.5.0"
 
 [tool.pytest.ini_options]
 filterwarnings = [
-    "ignore::pytest.PytestCollectionWarning",
     "ignore::bs4.GuessedAtParserWarning",
+    "ignore::pytest.PytestCollectionWarning",
+    "ignore::pytest_golden.plugin.GoldenTestUsageWarning",
     "ignore:the imp module is deprecated in favour of importlib:DeprecationWarning",
 ]

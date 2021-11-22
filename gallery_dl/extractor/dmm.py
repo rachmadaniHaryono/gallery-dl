@@ -59,8 +59,7 @@ class DmmPicsExtractor(DmmExtractor):
 
 
 class DmmListExtractor(DmmExtractor):
-    #  https://www.dmm.co.jp/mono/dvd/-/list/=/article=actress/id=1049284/
-    pattern = r"(?:https?://)?(www.)?dmm.co.jp/mono/dvd/-/list/=/article="
+    pattern = r"(?:https?://)?(www.)?dmm.co.jp/(mono/dvd|digital/video[^/]+)/-/list/=/article="
     subcategory = "list"
 
     def __init__(self, match):
@@ -133,7 +132,7 @@ class DmmListExtractor(DmmExtractor):
 
 
 class DmmDigitalExtractor(DmmExtractor):
-    pattern = r"(?:https?://)?(www.)?dmm.co.jp/((digital/video[^/]*|mono/dvd)/-/detail/=/cid=([^/]+)/?|)"
+    pattern = r"(?:https?://)?(www.)?dmm.co.jp/((digital/video[^/]*|mono/dvd)/-/detail/=/cid=([^/]+)/?)"
     subcategory = "digital"
 
     def __init__(self, match):

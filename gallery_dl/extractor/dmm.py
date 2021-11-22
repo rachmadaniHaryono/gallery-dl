@@ -3,10 +3,7 @@
 
 import re
 import typing as T
-import warnings
 from urllib import parse
-
-import bs4
 
 from .common import Extractor, Message, get_soup
 
@@ -57,9 +54,7 @@ class DmmPicsExtractor(DmmExtractor):
 
 
 class DmmDigitalExtractor(DmmExtractor):
-    pattern = (
-        r"(?:https?://)?(www.)?dmm.co.jp/digital/video[^/]*/-/detail/=/cid=([^/]+)/?"
-    )
+    pattern = r"(?:https?://)?(www.)?dmm.co.jp/((digital/video[^/]*|mono/dvd)/-/detail/=/cid=([^/]+)/?|)"
     subcategory = "digital"
 
     def __init__(self, match):

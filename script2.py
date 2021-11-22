@@ -81,6 +81,8 @@ class BaseHandler:
         for item in filter(lambda x: x[0] == 3, job.data):
             for key, namespace in key_dict.items():
                 subitem: T.Union[str, T.List[str]] = item[2].get(key, [])
+                if not subitem:
+                    continue
                 if isinstance(subitem, str):
                     url_dict[item[1]].add(create_tag(subitem, namespace))
                 else:

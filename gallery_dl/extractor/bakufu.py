@@ -28,9 +28,9 @@ def replace_url(inp: str) -> T.Optional[str]:
         return new_url
 
 
-class BakufuWpExtractor(BakufuExtractor):
+class BakufuWpContentsExtractor(BakufuExtractor):
     subcategory = "wp-contents"
-    pattern = BASE_PATTERN + r"/wp-contnt/uploads/"
+    pattern = BASE_PATTERN + r"/wp-content/uploads/"
 
     def items(self):
         yield Message.Url, self.url, {}

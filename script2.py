@@ -114,6 +114,15 @@ class BaseHandler:
         )
 
 
+class ImgurHandler(BaseHandler):
+    extractors = ("ImgurAlbumExtractor" "ImgurImageExtractor",)
+    key_dict = {
+        "title": "description:title:{subtag}",
+        "description": "description:{subtag}",
+        "name": "description:name:{subtag}",
+    }
+
+
 class TwitterHandler(BaseHandler):
     extractors = (
         "TwitterMediaExtractor",
@@ -314,6 +323,7 @@ def send_url(urls: T.List[str]):
             RedditHandler,
             SankakuHandler,
             TwitterHandler,
+            ImgurHandler,
         ]:
             if job.extractor.__class__.__name__ in handler.extractors:
                 cls = handler

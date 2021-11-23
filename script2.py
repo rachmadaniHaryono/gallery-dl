@@ -42,9 +42,9 @@ HandleJobResultType = T.TypedDict(
 )
 
 
-def create_tag(subtag: str, namespace: T.Optional[str] = None) -> str:
-    if namespace:
-        return namespace + subtag
+def create_tag(subtag: str, tag_fmt: T.Optional[str] = None) -> str:
+    if tag_fmt:
+        return tag_fmt.format(subtag=subtag)
     c_subtag = subtag.replace(":", " ")
     return c_subtag[1:] if c_subtag.startswith("#") else c_subtag
 
@@ -56,8 +56,20 @@ class BaseHandler:
     """
     extractors: T.Sequence[str]
 
-    @staticmethod
-    def handle_job(job: DataJob, url_dict: UrlDictType) -> HandleJobResultType:
+    key_dict = {
+        "description": "description:{subtag}",
+        "category_": "category:{subtag}",
+        "label": "label:{subtag}",
+        "person": "person:{subtag}",
+        "series": "series:{subtag}",
+        "thread": "thread:{subtag}",
+        "title": "title:{subtag}",
+        "url": "url:{subtag}",
+        "hashtags": None,
+    }
+
+    @classmethod
+    def handle_job(cls, job: DataJob, url_dict: UrlDictType) -> HandleJobResultType:
         """handle job data.
 
         Args:
@@ -66,28 +78,17 @@ class BaseHandler:
             url_set: unique urls
 
         """
-        key_dict = {
-            "description": "description:",
-            "category_": "category:",
-            "label": "label:",
-            "person": "person:",
-            "series": "series:",
-            "thread": "thread:",
-            "title": "title:",
-            "url": "url:",
-            "hashtags": "",
-        }
         item: T.List[T.Any]
         for item in filter(lambda x: x[0] == 3, job.data):
-            for key, namespace in key_dict.items():
+            for key, tag_fmt in cls.key_dict.items():
                 subitem: T.Union[str, T.List[str]] = item[2].get(key, [])
                 if not subitem:
                     continue
                 if isinstance(subitem, str):
-                    url_dict[item[1]].add(create_tag(subitem, namespace))
+                    url_dict[item[1]].add(create_tag(subitem, tag_fmt))
                 else:
                     for subtag in subitem:
-                        url_dict[item[1]].add(create_tag(subtag, namespace))
+                        url_dict[item[1]].add(create_tag(subtag, tag_fmt))
             if item[1] not in url_dict:
                 url_dict[item[1]] = set()
         return HandleJobResultType(url_dict=url_dict)
@@ -121,8 +122,8 @@ class TwitterHandler(BaseHandler):
         "TwitterTweetExtractor",
     )
 
-    @staticmethod
-    def handle_job(job, url_dict):
+    @classmethod
+    def handle_job(cls, job, url_dict):
         def get_subtag_from_dict(inp_dict: T.Dict[str, str]) -> str:
             return (
                 inp_dict["name"]
@@ -169,8 +170,8 @@ class TwitterHandler(BaseHandler):
 class HentaicosplaysGalleryHandler(BaseHandler):
     extractors = ("HentaicosplaysGalleryExtractor",)
 
-    @staticmethod
-    def handle_job(job, url_dict):
+    @classmethod
+    def handle_job(cls, job, url_dict):
         for item in filter(lambda x: x[0] == 3, job.data):
             subtag = item[2].get("title", None)
             if subtag:
@@ -183,8 +184,8 @@ class HentaicosplaysGalleryHandler(BaseHandler):
 class RedditHandler(BaseHandler):
     extractors = ("RedditSubmissionExtractor",)
 
-    @staticmethod
-    def handle_job(job: DataJob, url_dict: UrlDictType) -> HandleJobResultType:
+    @classmethod
+    def handle_job(cls, job: DataJob, url_dict: UrlDictType) -> HandleJobResultType:
         for item in filter(lambda x: x[0] == 3, job.data):
             if item[1] not in url_dict:
                 url_dict[item[1]] = set()
@@ -204,8 +205,8 @@ class RedditHandler(BaseHandler):
 class ReactorHandler(BaseHandler):
     extractors = ("ReactorTagExtractor", "ReactorExtractor")
 
-    @staticmethod
-    def handle_job(job, url_dict):
+    @classmethod
+    def handle_job(cls, job, url_dict):
         for item in filter(lambda x: x[0] == 3, job.data):
             for tag in item[2].get("tags", []):
                 if tag:
@@ -218,8 +219,8 @@ class ReactorHandler(BaseHandler):
 class SankakuHandler(BaseHandler):
     extractors = ("SankakuExtractor", "SankakuPostExtractor")
 
-    @staticmethod
-    def handle_job(job, url_dict):
+    @classmethod
+    def handle_job(cls, job, url_dict):
         for item in filter(lambda x: x[0] == 3, job.data):
             for tag in item[2].get("tag_string", "").split():
                 if tag:
@@ -319,7 +320,10 @@ def send_url(urls: T.List[str]):
                 break
         else:
             cls = BaseHandler
-        for res in [cls.handle_job(job, url_dict), cls.iter_queue_urls(job, url_set)]:
+        for res in [
+            cls.handle_job(job=job, url_dict=url_dict),
+            cls.iter_queue_urls(job, url_set),
+        ]:
             for key, val in res.get("url_dict", {}).items():
                 if not key:
                     logging.debug("No key" + str(dict(key=key, tags=val)))

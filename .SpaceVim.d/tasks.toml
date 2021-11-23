@@ -1,0 +1,11 @@
+[pytest-update-goldens-current-file]
+command = 'poetry'
+args = ['run', 'pytest', '-k', '${fileBasenameNoExtension}', '--update-goldens']
+
+[pytest-update-goldens-current-file-new-episodes]
+command = 'poetry'
+args = ['run', 'pytest', '-k', '${fileBasenameNoExtension}', '--update-goldens', '--vcr-record=new_episodes']
+
+[pytest-update-goldens-test_script]
+command = 'poetry'
+args = ['run', 'pytest', '-k', 'test_script', '--update-goldens']

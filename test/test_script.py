@@ -36,9 +36,12 @@ def test_items(golden, caplog):
     try:
         output_data = {k: sorted_list(set(v)) for k, v in output_data.items()}
     except TypeError:
-        output_data = {
-            k: sorted_list(v, key=lambda x: x[0]) for k, v in output_data.items()
-        }
+        try:
+            output_data = {
+                k: sorted_list(v, key=lambda x: x[0]) for k, v in output_data.items()
+            }
+        except (IndexError, TypeError):
+            output_data = {k: list(v) for k, v in output_data.items()}
     assert output_data == golden.out.get("output")
     debug_data = collections.defaultdict(set)
     for item in caplog.record_tuples:

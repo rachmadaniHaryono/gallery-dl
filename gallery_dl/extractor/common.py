@@ -8,6 +8,7 @@
 
 """Common classes and constants used by extractor modules."""
 
+import abc
 import datetime
 import logging
 import netrc
@@ -16,6 +17,7 @@ import re
 import ssl
 import threading
 import time
+import typing as T
 import warnings
 
 import bs4
@@ -26,7 +28,7 @@ from .. import config, exception, text, util
 from .message import Message
 
 
-class Extractor():
+class Extractor(metaclass=abc.ABCMeta):
 
     category = ""
     subcategory = ""
@@ -42,6 +44,7 @@ class Extractor():
     request_interval = 0.0
     request_interval_min = 0.0
     request_timestamp = 0.0
+    _retries: float
 
     def __init__(self, match):
         self.log = logging.getLogger(self.category)
@@ -55,7 +58,7 @@ class Extractor():
         self._parentdir = ""
 
         self._write_pages = self.config("write-pages", False)
-        self._retries = self.config("retries", 4)
+        self._retries = float(self.config("retries", 4))  # type:ignore
         self._timeout = self.config("timeout", 30)
         self._verify = self.config("verify", True)
         self._interval = util.build_duration_func(
@@ -105,8 +108,18 @@ class Extractor():
             values[:0] = config.accumulate((self.subcategory,), key, conf=conf)
         return values
 
-    def request(self, url, *, method="GET", session=None, retries=None,
-                encoding=None, fatal=True, notfound=None, **kwargs):
+    def request(
+        self,
+        url: T.Union[str, bytes],
+        *,
+        method: str = "GET",
+        session: T.Optional[requests.Session] = None,
+        retries: float = None,
+        encoding: T.Optional[T.Any] = None,
+        fatal: bool = True,
+        notfound: T.Optional[T.Any] = None,
+        **kwargs
+    ) -> requests.Response:
         if retries is None:
             retries = self._retries
         if session is None:
@@ -433,7 +446,7 @@ class Extractor():
                              e.__class__.__name__, e)
 
 
-class GalleryExtractor(Extractor):
+class GalleryExtractor(Extractor, metaclass=abc.ABCMeta):
 
     subcategory = "gallery"
     filename_fmt = "{category}_{gallery_id}_{num:>03}.{extension}"
@@ -482,11 +495,14 @@ class GalleryExtractor(Extractor):
 
     def login(self):
         """Login and set necessary cookies"""
+        pass
 
-    def metadata(self, page):
+    @abc.abstractmethod
+    def metadata(self, page: str) -> T.Dict[str, T.Any]:
         """Return a dict with general metadata"""
 
-    def images(self, page):
+    @abc.abstractmethod
+    def images(self, page: str) -> T.Sequence[T.Tuple[str, T.Dict[str, T.Any]]]:
         """Return a list of all (image-url, metadata)-tuples"""
 
 

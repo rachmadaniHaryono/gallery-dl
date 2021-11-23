@@ -8,9 +8,10 @@
 
 """Collection of functions that work on strings/text"""
 
-import re
-import html
 import datetime
+import html
+import re
+import typing as T
 import urllib.parse
 
 HTML_RE = re.compile("<[^>]+>")
@@ -60,7 +61,9 @@ def ext_from_url(url):
     return ext.lower() if name else ""
 
 
-def nameext_from_url(url, data=None):
+def nameext_from_url(
+    url: str, data: T.Optional[T.Dict[str, T.Any]] = None
+) -> T.Dict[str, T.Any]:
     """Extract the last part of an URL and fill 'data' accordingly"""
     if data is None:
         data = {}

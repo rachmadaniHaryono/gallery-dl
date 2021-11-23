@@ -8,19 +8,21 @@
 
 """Utility functions and classes"""
 
-import re
-import os
-import sys
-import json
-import random
-import sqlite3
 import binascii
 import datetime
 import functools
 import itertools
+import json
+import os
+import random
+import re
+import sqlite3
+import sys
+import typing as T
 import urllib.parse
 from http.cookiejar import Cookie
-from . import text, exception
+
+from . import exception, text
 
 
 def bencode(num, alphabet="0123456789"):
@@ -133,7 +135,9 @@ def delete_items(obj, keys):
             del obj[key]
 
 
-def enumerate_reversed(iterable, start=0, length=None):
+def enumerate_reversed(
+    iterable: T.Sequence[T.Any], start: int = 0, length: T.Optional[int] = None
+):
     """Enumerate 'iterable' and return its elements in reverse order"""
     start -= 1
     if length is None:

@@ -292,15 +292,15 @@ def send_url(urls: T.List[str]):
     cl = hydrus.Client(os.getenv("HYDRUS_ACCESS_KEY"))
     jq: "queue.Queue[DataJob]" = queue.Queue()
     config.load()
+    err_list: T.List[ErrorItemType] = []
     for url in {x for x in urls if x}:
         try:
             jq.put(DataJob(url))
         except NoExtractorError as err:
             logging.error(f"url: {url}")
-            raise err
+            err_list.append(ErrorItemType(err=err, url=url, tags=None, target_url=None))
     url_dict: UrlDictType = collections.defaultdict(set)
     url_set = set(urls)
-    err_list: T.List[ErrorItemType] = []
     while tqdm.tqdm(not jq.empty()):
         job = jq.get()
         job_url = job.extractor.url

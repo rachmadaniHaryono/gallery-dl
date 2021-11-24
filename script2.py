@@ -183,20 +183,11 @@ class BakufuHandler(BaseHandler):
         "title": "thread:{subtag}",
     }
 
-
-
 class HentaicosplaysGalleryHandler(BaseHandler):
     extractors = ("HentaicosplaysGalleryExtractor",)
-
-    @classmethod
-    def handle_job(cls, job, url_dict):
-        for item in filter(lambda x: x[0] == 3, job.data):
-            subtag = item[2].get("title", None)
-            if subtag:
-                url_dict[item[1]].add("thread:" + subtag)
-            if item[1] not in url_dict:
-                url_dict[item[1]] = set()
-        return dict(url_dict=url_dict)
+    key_dict = {
+        "title": "thread:{subtag}",
+    }
 
 
 class RedditHandler(BaseHandler):

@@ -176,6 +176,15 @@ class TwitterHandler(BaseHandler):
         return dict(url_dict=url_dict)
 
 
+class BakufuHandler(BaseHandler):
+    extractors = ("BakufuGalleryExtractor",)
+    key_dict = {
+        "category_": "category:{subtag}",
+        "title": "thread:{subtag}",
+    }
+
+
+
 class HentaicosplaysGalleryHandler(BaseHandler):
     extractors = ("HentaicosplaysGalleryExtractor",)
 
@@ -317,13 +326,14 @@ def send_url(urls: T.List[str]):
                 str({x[0] for x in job.data if x[0] not in [2, 3, 6]}) + ":" + job_url
             )
         for handler in [
+            BakufuHandler,
             HentaicosplaysGalleryHandler,
+            ImgurHandler,
             NhentaiHandler,
             ReactorHandler,
             RedditHandler,
             SankakuHandler,
             TwitterHandler,
-            ImgurHandler,
         ]:
             if job.extractor.__class__.__name__ in handler.extractors:
                 cls = handler

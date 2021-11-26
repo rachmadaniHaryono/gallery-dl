@@ -94,7 +94,9 @@ class BaseHandler:
         return HandleJobResultType(url_dict=url_dict)
 
     @staticmethod
-    def iter_queue_urls(job: DataJob, url_set: T.Optional[UrlSetType] = None):
+    def iter_queue_urls(
+        job: DataJob, url_set: T.Optional[UrlSetType] = None
+    ) -> HandleJobResultType:
         if url_set is None:
             url_set = set()
         error_list: T.List[ErrorItemType] = []
@@ -193,22 +195,39 @@ class HentaicosplaysGalleryHandler(BaseHandler):
 class RedditHandler(BaseHandler):
     extractors = ("RedditSubmissionExtractor",)
 
-    @classmethod
-    def handle_job(cls, job: DataJob, url_dict: UrlDictType) -> HandleJobResultType:
-        for item in filter(lambda x: x[0] == 3, job.data):
-            if item[1] not in url_dict:
-                url_dict[item[1]] = set()
-            for key, tag_fmt in (
-                ("author", "uploader:{subtag}"),
-                ("link_flair_text", "category:{subtag}"),
-                ("permalink", "url:https://www.reddit.com{subtag}"),
-                ("subreddit", "category:subreddit:{subtag}"),
-                ("title", "description:{subtag}"),
-            ):
-                if subtag := item[2].get(key, None):
-                    url_dict[item[1]].add(tag_fmt.format(subtag=subtag))
 
-        return HandleJobResultType(url_dict=url_dict)
+    key_dict = {
+        "author": "uploader:{subtag}",
+        "link_flair_text": "category:{subtag}",
+        "permalink": "url:https://www.reddit.com{subtag}",
+        "subreddit": "category:subreddit:{subtag}",
+        "title": "description:{subtag}",
+    }
+
+    @staticmethod
+    def iter_queue_urls(
+        job: DataJob, url_set: T.Optional[UrlSetType] = None
+    ) -> HandleJobResultType:
+        res = super(RedditHandler, RedditHandler).iter_queue_urls(
+            job=job, url_set=url_set
+        )
+        job_list = res.get("job_list", [])
+        new_job_list = []
+        res.setdefault("url_dict", collections.defaultdict(set))
+        for job in job_list:
+            try:
+                if job.extractor.__class__.__name__ in (
+                    "PixivWorkExtractor",
+                    "DanbooruPostExtractor",
+                ):
+                    res["url_dict"].setdefault(job.extractor.url, set())
+                else:
+                    new_job_list.append(job)
+            except Exception as err:
+                logging.error(str(err))
+                new_job_list.append(job)
+        res["job_list"] = new_job_list
+        return res
 
 
 class ReactorHandler(BaseHandler):

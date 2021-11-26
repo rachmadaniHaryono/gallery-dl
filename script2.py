@@ -216,11 +216,15 @@ class RedditHandler(BaseHandler):
         res.setdefault("url_dict", collections.defaultdict(set))
         for job in job_list:
             try:
-                if job.extractor.__class__.__name__ in (
-                    "PixivWorkExtractor",
+                extractor_name = job.extractor.__class__.__name__
+                if extractor_name in (
                     "DanbooruPostExtractor",
+                    "PixivWorkExtractor",
                 ):
                     res["url_dict"].setdefault(job.extractor.url, set())
+                elif extractor_name in ("TwitterTimelineExtractor",):
+                    logging.debug("skip url, %s", job.extractor.url)
+                    pass
                 else:
                     new_job_list.append(job)
             except Exception as err:

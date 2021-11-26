@@ -66,8 +66,14 @@ def test_handler(golden):
     for k, vals in raw_data.items():
         for v in vals:
             job.data.append([k] + list(v))
-    handler_func = getattr(sc, golden["handler"]).handle_job
-    res = handler_func(job, collections.defaultdict(set))
+    res = getattr(sc, golden["handler"]).handle_job(job, collections.defaultdict(set))
+    res2 = getattr(sc, golden["handler"]).iter_queue_urls(
+        job, res.get("url_set", set())
+    )
+    # merge res2 to res
+    for k, v in res2.get("url_dict", {}).items():
+        res["url_dict"][k].update(v)
+    # check
     sort_list = lambda x: list(sorted(x))
     for item in res.items():
         if item[0] == "url_dict":

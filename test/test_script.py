@@ -19,6 +19,10 @@ def sorted_list(inp: T.Iterable[T.Any], **kwargs) -> T.List[T.Any]:
     return list(sorted(inp, **kwargs))
 
 
+def sorted_list_set(inp: T.Iterable[T.Any]) -> T.List[T.Any]:
+    return sorted_list(set(inp))
+
+
 @pytest.mark.golden_test("data/test_items_*.yaml")
 @pytest.mark.vcr()
 def test_items(golden, caplog):
@@ -34,7 +38,7 @@ def test_items(golden, caplog):
     for item in job.data:
         output_data[item[0]].append([x for x in item[1:] if x])
     try:
-        output_data = {k: sorted_list(set(v)) for k, v in output_data.items()}
+        output_data = {k: sorted_list_set(v) for k, v in output_data.items()}
     except TypeError:
         try:
             output_data = {
@@ -48,7 +52,7 @@ def test_items(golden, caplog):
         if item[0] == job.extractor.category and item[1] == logging.DEBUG:
             parts = item[2].split(",", 1)
             debug_data[parts[0]].add(parts[1])
-    assert {k: sorted_list(set(v)) for k, v in debug_data.items()} == golden.out.get(
+    assert {k: sorted_list_set(v) for k, v in debug_data.items()} == golden.out.get(
         "debug"
     )
     assert job.extractor.__class__.__name__ == golden.out.get("extractor")
@@ -96,7 +100,7 @@ def test_url(golden):
             logging.error("url:%s", url)
             raise err
     assert sorted_list(output_data) == golden.out["outputs"]
-    assert sorted_list(set(golden["urls"])) == golden.out["urls"]
+    assert sorted_list_set(golden["urls"]) == golden.out["urls"]
 
 
 @pytest.mark.golden_test("data/test_replace_url_*.yaml")
@@ -111,4 +115,4 @@ def test_replace_url(golden):
             logging.error("url:%s", url)
             raise err
     assert sorted_list(output_data) == golden.out["outputs"]
-    assert sorted_list(set(golden["urls"])) == golden.out["urls"]
+    assert sorted_list_set(golden["urls"]) == golden.out["urls"]

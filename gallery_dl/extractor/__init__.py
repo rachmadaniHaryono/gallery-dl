@@ -10,13 +10,17 @@ import re
 
 modules = [
     # custom
-    "bi_girl",
     "bakufu",
+    "bi_girl",
     "dmm",
+    "dtiserv2",
     "invidious",
     "nitter",
+    "novelupdates",
+    "reddit_preview",
     "sokmil",
     "t",
+    "youtube",
     # gallery_dl
     "2chan",
     "35photo",

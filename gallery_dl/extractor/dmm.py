@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import collections
 import re
 import typing as T
 from urllib import parse
 
-from .common import Extractor, Message, get_soup
+from .common import Extractor, GalleryExtractor, Message, get_soup
 
 
 class DmmExtractor(Extractor):
@@ -112,7 +113,6 @@ class DmmListExtractor(DmmExtractor):
             if cont:
                 continue
             yield Message.Queue, val, {}
-        #  dmm7
         if html_tags := [
             x.get("href")
             for x in soup.select("div.list-boxcaptside.list-boxpagenation ul li a")
@@ -131,24 +131,35 @@ class DmmListExtractor(DmmExtractor):
             yield Message.Queue, next_url_val, {}
 
 
-class DmmDigitalExtractor(DmmExtractor):
+class DmmDigitalExtractor(DmmExtractor, GalleryExtractor):
     pattern = r"(?:https?://)?(www.)?dmm.co.jp/((digital/video[^/]*|mono/dvd)/-/detail/=/cid=([^/]+)/?)"
     subcategory = "digital"
 
     def __init__(self, match):
         super().__init__(match)
-        self.cid = match.groups()[1]
+        self.gallery_id = match.group(4)
+        self.gallery_url = self.url
 
-    def items(self):
-        soup = get_soup(self.request(self.url).content)  # type: ignore
-        links = [
-            href
-            for x in soup.find_all("a")
-            if (href := x.get("href")) and "dmm.co.jp/age_check/=/declared=yes/" in href
-        ]
-        if links:
-            self.log.debug("new request,%s", links[0])
-            soup = get_soup(self.request(links[0]).content)  # type: ignore
+    def init_soup(self, page):
+        if not hasattr(self, "soup"):
+            soup = get_soup(page)  # type: ignore
+            links = [
+                href
+                for x in soup.find_all("a")
+                if (href := x.get("href"))
+                and "dmm.co.jp/age_check/=/declared=yes/" in href
+            ]
+            if links:
+                self.log.debug("new request,%s", links[0])
+                soup = get_soup(self.request(links[0]).content)  # type: ignore
+            self.soup = soup
+            return soup
+        return self.soup
+
+    def metadata(self, page: str) -> T.Dict[str, T.Any]:
+        """Return a dict with general metadata"""
+        #  dmm11
+        soup = self.init_soup(page)
         rows = [x for x in soup.select("div.page-detail table tr")]
         rows_data = []
         for row in rows:
@@ -162,9 +173,9 @@ class DmmDigitalExtractor(DmmExtractor):
                         len(cells),
                     ]
                 )
-        data = {}
+        data = collections.defaultdict(list)
         if (subtag := soup.select_one("h1#title")) and subtag.text:
-            data["title"] = [subtag.text]
+            data["title"].append(subtag.text)
         category = []
         for item in rows_data:
             item0 = re.sub(r"\s+", " ", item[0]).replace("：", "")
@@ -174,7 +185,27 @@ class DmmDigitalExtractor(DmmExtractor):
             else:
                 category.append(":".join([item0, item[2]]))
         if category:
-            data["category_"] = category
+            data["category_"].extend(category)
+        key = "出演者:▼すべて表示する"
+        if key in data["category_"]:
+            new_soup = get_soup(
+                self.request(
+                    parse.urljoin(
+                        self.gallery_url,
+                        "/mono/dvd/-/detail/performer/=/cid={}/".format(
+                            self.gallery_id
+                        ),
+                    )
+                ).content
+            )
+            for text in [x.text for x in new_soup.select("a") if x.text]:
+                data["category_"].append("出演者:" + text)
+            data["category_"].remove(key)
+        return data
+
+    def images(self, page: str) -> T.Sequence[T.Tuple[str, T.Dict[str, T.Any]]]:
+        """Return a list of all (image-url, metadata)-tuples"""
+        soup = self.init_soup(page)
         urls = set()
         for src in [x.get("src") for x in soup.select("div#sample-image-block a img")]:
             new_url = replace_url(src)  # type:ignore
@@ -195,4 +226,7 @@ class DmmDigitalExtractor(DmmExtractor):
             urls.add(new_url)
         for url in urls:
             if not url.startswith("javascript:"):
-                yield Message.Url, url, data
+                num = None
+                if match := re.match(r".*-(\d+)\..+", parse.urlparse(url).path):
+                    num = int(match.group(1))
+                yield url, {"num": num}

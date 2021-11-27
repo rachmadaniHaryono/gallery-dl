@@ -122,7 +122,7 @@ class ExhentaiGalleryExtractor(ExhentaiExtractor):
                 "date": "dt:2018-03-18 20:15:00",
                 "eh_category": "Non-H",
                 "expunged": False,
-                "favorites": "18",
+                "favorites": "19",
                 "filecount": "4",
                 "filesize": 1488978,
                 "gid": 1200119,
@@ -239,7 +239,7 @@ class ExhentaiGalleryExtractor(ExhentaiExtractor):
             "title_jpn"    : text.unescape(extr('<h1 id="gj">', '</h1>')),
             "_"            : extr('<div id="gdc"><div class="cs ct', '"'),
             "eh_category"  : extr('>', '<'),
-            "uploader"     : text.unquote(extr('/uploader/', '"')),
+            "uploader"     : extr('<div id="gdn">', '</div>'),
             "date"         : text.parse_datetime(extr(
                 '>Posted:</td><td class="gdt2">', '</td>'), "%Y-%m-%d %H:%M"),
             "parent"       : extr(
@@ -254,6 +254,10 @@ class ExhentaiGalleryExtractor(ExhentaiExtractor):
             "rating"       : extr(">Average: ", "<"),
             "torrentcount" : extr('>Torrent Download (', ')'),
         }
+
+        if data["uploader"].startswith("<"):
+            data["uploader"] = text.unescape(text.extract(
+                data["uploader"], ">", "<")[0])
 
         f = data["favorites"][0]
         if f == "N":

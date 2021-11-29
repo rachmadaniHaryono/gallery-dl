@@ -5,6 +5,7 @@ import logging
 import os
 import pathlib
 import typing as T
+from itertools import islice
 from unittest import mock
 
 import pytest
@@ -51,7 +52,7 @@ def test_items(golden, caplog):
     for item in caplog.record_tuples:
         if item[0] == job.extractor.category and item[1] == logging.DEBUG:
             parts = item[2].split(",", 1)
-            debug_data[parts[0]].add(parts[1])
+            debug_data[parts[0]].add(next(islice(parts, 1, None), None))
     assert {k: sorted_list_set(v) for k, v in debug_data.items()} == golden.out.get(
         "debug"
     )
@@ -88,7 +89,6 @@ def test_handler(golden):
         elif item[1]:
             # only check when there is value
             assert item[1] == golden.out[item[0]]
-
 
 @pytest.mark.golden_test("data/test_url_*.yaml")
 def test_url(golden):

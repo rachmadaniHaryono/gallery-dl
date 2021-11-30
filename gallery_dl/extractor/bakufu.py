@@ -7,10 +7,16 @@ import re
 import typing as T
 from urllib import parse
 
+import bs4
+
 from .. import text
 from .common import Extractor, GalleryExtractor, Message, get_soup
 
 BASE_PATTERN = r"(?:https?://)?bakufu.jp"
+
+
+def list_product(*args):
+    return list(itertools.product(*args))
 
 
 class BakufuExtractor(Extractor):
@@ -40,6 +46,83 @@ class BakufuWpContentsExtractor(BakufuExtractor):
             yield Message.Url, new_url, {}
 
 
+def get_img_srcs_and_img_hrefs(soup: bs4.BeautifulSoup) -> T.Dict[str, T.Set[str]]:
+    return {
+        "a_hrefs": {
+            href.strip()
+            for x in soup.find_all("a")
+            if (href := x.get("href")) and href.strip()
+        },
+        "img_srcs": {
+            src.strip()
+            for x in soup.find_all("img")
+            if (src := x.get("src")) and src.strip()
+        },
+    }
+
+
+class BakufuCategoryExtractor(BakufuExtractor):
+    subcategory = "category"
+    pattern = BASE_PATTERN + r"/archives/category/.+"
+
+    def items(self):
+        soup = get_soup(self.request(self.url).content)
+        soup_res = get_img_srcs_and_img_hrefs(soup)
+        s_url_netloc = parse.urlparse(self.url).netloc
+        for item in {
+            href.strip()
+            for x in soup.select("article h1.entry-title a")
+            if (href := x.get("href", None)) and href.strip()
+        }:
+            yield Message.Queue, item, {}
+        for url, msg in [  # type: ignore
+            *list_product(soup_res.get("a_hrefs", set()), [Message.Queue]),
+            *list_product(soup_res.get("img_srcs", set()), [Message.Url]),
+        ]:
+            if url.startswith("//"):
+                url = "https:" + url
+            elif url.startswith("/"):
+                url = parse.urljoin(self.url, url)
+            p_url = parse.urlparse(url)
+            cont = False
+
+            for cond, dbg_msg in [
+                (
+                    lambda: p_url.netloc == s_url_netloc,
+                    "recursive netloc,%s",
+                ),
+                (
+                    lambda: p_url.netloc in self.exclude_external_netloc,
+                    "exclude netloc,%s",
+                ),
+                (
+                    lambda: self.exclude_external_regex
+                    and any(re.match(x, url) for x in self.exclude_external_regex),
+                    "exclude regex,%s",
+                ),
+            ]:
+                if cond():
+                    self.log.debug(dbg_msg, url)
+                    cont = True
+                    break
+            if cont:
+                continue
+            if (
+                p_url.netloc in ("img.sokmil.com", "pics.dmm.co.jp")
+                and msg == Message.Url
+            ):
+                yield Message.Queue, url, {}
+            elif (
+                msg == Message.Url
+                and p_url.netloc == "img.bakufu.jp"
+                and (new_url := replace_url(url))
+                and new_url != url
+            ):
+                yield Message.Url, new_url, {}
+            else:
+                yield msg, url, {}
+
+
 class BakufuGalleryExtractor(BakufuExtractor, GalleryExtractor):
     pattern = BASE_PATTERN + r"(/archives/\d+)"
     root = "http://bakufu.jp"
@@ -52,21 +135,11 @@ class BakufuGalleryExtractor(BakufuExtractor, GalleryExtractor):
                 if hasattr(self, "soup")
                 else get_soup(self.request(self.url).content)
             )
-            img_src = {
-                src.strip()
-                for x in soup.find_all("img")
-                if (src := x.get("src")) and src.strip()
-            }
-            a_href = {
-                href.strip()
-                for x in soup.find_all("a")
-                if (href := x.get("href")) and href.strip()
-            }
+            soup_res = get_img_srcs_and_img_hrefs(soup)
             s_url_netloc = parse.urlparse(self.url).netloc
-            list_product = lambda args: list(itertools.product(*args))
             for url, msg in [  # type: ignore
-                *list_product((a_href, [Message.Queue])),
-                *list_product((img_src, [Message.Url])),
+                *list_product(soup_res.get("a_hrefs", set()), [Message.Queue]),
+                *list_product(soup_res.get("img_srcs", set()), [Message.Url]),
             ]:
                 if url.startswith("//"):
                     url = "https:" + url

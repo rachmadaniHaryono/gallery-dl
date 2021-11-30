@@ -7,6 +7,7 @@ from urllib import parse
 import bs4
 import requests
 
+from .bakufu import get_img_srcs_and_img_hrefs
 from .common import Extractor, Message
 
 BASE_PATTERN = r"(?:https?://)?" r"bi-girl" r"\.net"
@@ -29,17 +30,11 @@ class BiGirlSearchImageExtractor(BiGirlExtractor):
         try:
             resp: requests.models.Response = self.request(self.url)
             soup = bs4.BeautifulSoup(resp.content)
-            img_src = {
-                src.strip()
-                for x in soup.find_all("img")
-                if (src := x.get("src")) and src.strip()
-            }
-            a_href = {
-                href.strip()
-                for x in soup.find_all("a")
-                if (href := x.get("href")) and href.strip()
-            }
-            for item, msg in [(a_href, Message.Queue), (img_src, Message.Url)]:
+            soup_res = get_img_srcs_and_img_hrefs(soup)
+            for item, msg in [
+                (soup_res.get("a_hrefs", set()), Message.Queue),
+                (soup_res.get("img_srcs", set()), Message.Url),
+            ]:
                 url: str
                 for url in item:
                     if url.startswith("//"):

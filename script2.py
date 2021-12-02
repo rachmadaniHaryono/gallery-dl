@@ -16,6 +16,7 @@ import yaml
 
 from gallery_dl import config
 from gallery_dl.exception import NoExtractorError
+from gallery_dl.extractor.common import get_soup
 from gallery_dl.job import DataJob
 
 UrlSetType = T.Set[str]
@@ -114,6 +115,27 @@ class BaseHandler:
         return HandleJobResultType(
             url_set=url_set, job_list=job_list, error_list=error_list
         )
+
+
+class _4chanHandler(BaseHandler):
+
+    extractors = ("_4chanThreadExtractor",)
+
+    @classmethod
+    def handle_job(cls, job: DataJob, url_dict: UrlDictType) -> HandleJobResultType:
+        cls.key_dict["title"] = "thread:{subtag}"
+        cls.key_dict["filename"] = "filename:{subtag}"
+        del cls.key_dict["thread"]
+        res = super(cls, cls).handle_job(job=job, url_dict=url_dict)
+        res.setdefault("url_dict", UrlDictType())
+        for item in filter(lambda x: x[0] == 3 and x[2], job.data):
+            if (subtag := item[2].get("com")) and (
+                soup_text := get_soup(subtag)
+                .get_text(separator="\n")
+                .replace("\n", " ")
+            ):
+                res["url_dict"][item[1]].add(f"description:{soup_text}")
+        return res
 
 
 class InstagramHandler(BaseHandler):
@@ -389,6 +411,7 @@ def send_url(urls: T.List[str]):
                 str({x[0] for x in job.data if x[0] not in [2, 3, 6]}) + ":" + job_url
             )
         for handler in [
+            _4chanHandler,
             BakufuHandler,
             HentaicosplaysGalleryHandler,
             ImgurHandler,

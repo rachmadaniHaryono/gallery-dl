@@ -116,6 +116,55 @@ class BaseHandler:
         )
 
 
+class InstagramHandler(BaseHandler):
+    extractors = (
+        "InstagramChannelExtractor",
+        "InstagramHighlightsExtractor",
+        "InstagramPostExtractor",
+        "InstagramPostsExtractor",
+        "InstagramReelsExtractor",
+        "InstagramStoriesExtractor",
+        "InstagramTaggedExtractor",
+        "InstagramUserExtractor",
+    )
+    key_dict = {
+        "username": "category:user:{subtag}",
+        "fullname": "category:fullname:{subtag}",
+    }
+
+    @classmethod
+    def handle_job(cls, job: DataJob, url_dict: UrlDictType) -> HandleJobResultType:
+        res = super(InstagramHandler, InstagramHandler).handle_job(
+            job=job, url_dict=url_dict
+        )
+        if "url_dict" not in res:
+            res["url_dict"] = UrlDictType()
+        for item in filter(lambda x: x[0] == 3 and x[2], job.data):
+            tags = set()
+            if description := item[2].get("description"):
+                if "\n" in description:
+                    description = description.replace("\n", " ")
+                tags.add(
+                    f"description:{username}:{description}"
+                    if (username := item[2].get("username"))
+                    else f"description:{description}"
+                )
+            for subtag in item[2].get("tags", []):
+                if subtag.startswith("#"):
+                    subtag = subtag[1:]
+                tags.add(f"ig:{subtag}")
+            # ignore type because unknown "Could not access item in TypedDict" error
+            if tags:
+                res["url_dict"][item[1]].update(tags)  # type:ignore
+            # final section, send display_url with tags from the item
+            if url := item[2].get("display_url"):
+                [
+                    res["url_dict"][url].add(x)  # type:ignore
+                    for x in res["url_dict"][item[1]]  # type: ignore
+                ]
+        return res
+
+
 class ImgurHandler(BaseHandler):
     extractors = ("ImgurAlbumExtractor" "ImgurImageExtractor",)
     key_dict = {
@@ -343,6 +392,7 @@ def send_url(urls: T.List[str]):
             BakufuHandler,
             HentaicosplaysGalleryHandler,
             ImgurHandler,
+            InstagramHandler,
             NhentaiHandler,
             ReactorHandler,
             RedditHandler,

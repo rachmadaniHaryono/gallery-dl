@@ -14,6 +14,7 @@ modules = [
     "bi_girl",
     "dmm",
     "dtiserv2",
+    "erogazou_onaneta",
     "invidious",
     "nitter",
     "novelupdates",

@@ -53,10 +53,12 @@ def test_items(golden, caplog):
         if item[0] == job.extractor.category and item[1] == logging.DEBUG:
             parts = item[2].split(",", 1)
             debug_data[parts[0]].add(next(islice(parts, 1, None), None))
-    assert {k: sorted_list_set(v) for k, v in debug_data.items()} == golden.out.get(
-        "debug"
-    )
     assert job.extractor.__class__.__name__ == golden.out.get("extractor")
+    assert {
+        k: sorted_list_set(v)
+        for k, v in debug_data.items()
+        if not k.startswith("Sleeping for ")
+    } == golden.out.get("debug")
 
 
 @pytest.mark.golden_test("data/test_handler_*.yaml")

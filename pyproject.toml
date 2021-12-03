@@ -19,6 +19,7 @@ hydrus-api = {version = "^2.14.3", extras = ["extra"]}
 natsort = "^8.0.0"
 beautifulsoup4 = "^4.10.0"
 more-itertools = "^8.11.0"
+yt-dlp = "^2021.12.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
@@ -34,5 +35,6 @@ filterwarnings = [
     "ignore::bs4.GuessedAtParserWarning",
     "ignore::pytest.PytestCollectionWarning",
     "ignore::pytest_golden.plugin.GoldenTestUsageWarning",
+    "ignore:The distutils package is deprecated and slated for removal in Python 3.12:DeprecationWarning",
     "ignore:the imp module is deprecated in favour of importlib:DeprecationWarning",
 ]

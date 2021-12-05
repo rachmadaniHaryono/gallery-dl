@@ -25,7 +25,9 @@ DataJobListType = T.List[DataJob]
 ErrorItemType = T.TypedDict(
     "ErrorItemType",
     {
-        "err": T.Union[NoExtractorError, hydrus.MissingParameter, ValueError],
+        "err": T.Union[
+            NoExtractorError, hydrus.MissingParameter, ValueError, Exception
+        ],
         "url": str,
         "tags": T.Any,
         "target_url": T.Optional[str],
@@ -398,50 +400,61 @@ def send_url(urls: T.List[str]):
     while tqdm.tqdm(not jq.empty()):
         job = jq.get()
         job_url = job.extractor.url
-        tqdm.tqdm.write(f"qsize:{jq.qsize()}:len_url:{len(url_dict)}:url:{job_url}")
-        job.file = open(os.devnull, "w")
-        job.run()
-        dict_to_print = collections.defaultdict(list)
-        for item in job.data:
-            dict_to_print[item[0]].append(list(item[1:]))
-        for k, v in dict_to_print.items():
-            tqdm.tqdm.write("key:" + str(k) + "\n" + yaml.dump(v, allow_unicode=True))
-        if any(x[0] not in [2, 3, 6] for x in job.data):
-            tqdm.tqdm.write(
-                str({x[0] for x in job.data if x[0] not in [2, 3, 6]}) + ":" + job_url
+        try:
+            tqdm.tqdm.write(f"qsize:{jq.qsize()}:len_url:{len(url_dict)}:url:{job_url}")
+            with open(os.devnull, "w") as f:
+                job.file = f
+                job.run()
+            dict_to_print = collections.defaultdict(list)
+            for item in job.data:
+                dict_to_print[item[0]].append(list(item[1:]))
+            for k, v in dict_to_print.items():
+                tqdm.tqdm.write(
+                    "key:" + str(k) + "\n" + yaml.dump(v, allow_unicode=True)
+                )
+            if any(x[0] not in [2, 3, 6] for x in job.data):
+                tqdm.tqdm.write(
+                    str({x[0] for x in job.data if x[0] not in [2, 3, 6]})
+                    + ":"
+                    + job_url
+                )
+            for handler in [
+                _4chanHandler,
+                BakufuHandler,
+                HentaicosplaysGalleryHandler,
+                ImgurHandler,
+                InstagramHandler,
+                NhentaiHandler,
+                ReactorHandler,
+                RedditHandler,
+                SankakuHandler,
+                TwitterHandler,
+            ]:
+                if job.extractor.__class__.__name__ in handler.extractors:
+                    cls = handler
+                    break
+            else:
+                cls = BaseHandler
+            for res in [
+                cls.handle_job(job=job, url_dict=url_dict),
+                cls.iter_queue_urls(job, url_set),
+            ]:
+                for key, val in res.get("url_dict", {}).items():
+                    if not key:
+                        logging.debug("No key" + str(dict(key=key, tags=val)))
+                        continue
+                    url_dict[key].update(val)
+                for item in res.get("url_set", set()):
+                    url_set.add(item)
+                for item in res.get("job_list", []):
+                    jq.put(item)
+                for item in res.get("error_list", []):
+                    err_list.append(item)
+        except Exception as err:
+            logging.exception(err)
+            err_list.append(
+                ErrorItemType(err=err, url=job_url, tags=None, target_url=None)
             )
-        for handler in [
-            _4chanHandler,
-            BakufuHandler,
-            HentaicosplaysGalleryHandler,
-            ImgurHandler,
-            InstagramHandler,
-            NhentaiHandler,
-            ReactorHandler,
-            RedditHandler,
-            SankakuHandler,
-            TwitterHandler,
-        ]:
-            if job.extractor.__class__.__name__ in handler.extractors:
-                cls = handler
-                break
-        else:
-            cls = BaseHandler
-        for res in [
-            cls.handle_job(job=job, url_dict=url_dict),
-            cls.iter_queue_urls(job, url_set),
-        ]:
-            for key, val in res.get("url_dict", {}).items():
-                if not key:
-                    logging.debug("No key" + str(dict(key=key, tags=val)))
-                    continue
-                url_dict[key].update(val)
-            for item in res.get("url_set", set()):
-                url_set.add(item)
-            for item in res.get("job_list", []):
-                jq.put(item)
-            for item in res.get("error_list", []):
-                err_list.append(item)
 
     for item in tqdm.tqdm(natsort.natsorted(url_dict.items())):
         url, tags = item

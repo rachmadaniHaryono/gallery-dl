@@ -62,7 +62,7 @@ def test_items(golden, caplog):
 
 
 @pytest.mark.golden_test("data/test_handler_*.yaml")
-def test_handler(golden):
+def test_handler(golden, caplog):
     name = golden.path.name.split("test_handler_", 1)[1].rsplit(".yaml", 1)[0]
     job = mock.Mock()
     with (
@@ -73,10 +73,14 @@ def test_handler(golden):
     for k, vals in raw_data.items():
         for v in vals:
             job.data.append([k] + list(v))
-    res = getattr(sc, golden["handler"]).handle_job(job, collections.defaultdict(set))
-    res2 = getattr(sc, golden["handler"]).iter_queue_urls(
-        job, res.get("url_set", set())
-    )
+
+    with caplog.at_level(logging.DEBUG):
+        res = getattr(sc, golden["handler"]).handle_job(
+            job, collections.defaultdict(set)
+        )
+        res2 = getattr(sc, golden["handler"]).iter_queue_urls(
+            job, res.get("url_set", set())
+        )
     # merge res2 to res
     for k, v in res2.get("url_dict", {}).items():
         res["url_dict"][k].update(v)
@@ -91,6 +95,24 @@ def test_handler(golden):
         elif item[1]:
             # only check when there is value
             assert item[1] == golden.out[item[0]]
+    #  test_handler_reddit6
+    debug_data = collections.defaultdict(set)
+    for item in caplog.record_tuples:
+        item2 = item[2]
+        key = [item[0], item[1]]
+        value = None
+        for i2key in (" for ", ","):
+            if i2key in item2:
+                item2_parts = item2.split(i2key, 1)
+                key.append(item2_parts[0])
+                value = item2_parts[1].strip()
+        if value is None:
+            value = item2
+        debug_data[tuple(key)].add(value)
+    assert {k: sorted_list_set(v) for k, v in debug_data.items()} == golden.out.get(
+        "debug"
+    )
+
 
 @pytest.mark.golden_test("data/test_url_*.yaml")
 def test_url(golden):

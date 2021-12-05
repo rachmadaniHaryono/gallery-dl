@@ -119,6 +119,32 @@ class BaseHandler:
         )
 
 
+class ExhentaiHandler(BaseHandler):
+    extractors = ("ExhentaiGalleryExtractor",)
+    key_dict = {
+        "title": "title:{subtag}",
+        "title_jpn": "description:title_ja:{subtag}",
+        "eh_category": "category:{subtag}",
+        "lang": "category:lang:{subtag}",
+        "filename": "filename:{subtag}",
+        "num": "page:{subtag}",
+    }
+
+    @classmethod
+    def handle_job(cls, job: DataJob, url_dict: UrlDictType) -> HandleJobResultType:
+        res = super(cls, cls).handle_job(job=job, url_dict=url_dict)
+        res.setdefault("url_dict", UrlDictType())
+        for item in filter(lambda x: x[0] == 3 and x[2], job.data):
+            for tag in item[2].get("tags", []):
+                c_tag = (
+                    "series:" + tag.split("parody:", 1)[1]
+                    if tag.startswith("parody:")
+                    else tag
+                )
+                res["url_dict"][item[1]].add(f"category:{c_tag}")
+        return res
+
+
 class _4chanHandler(BaseHandler):
 
     extractors = ("_4chanThreadExtractor",)
@@ -424,6 +450,7 @@ def send_url(urls: T.List[str]):
             for handler in [
                 _4chanHandler,
                 BakufuHandler,
+                ExhentaiHandler,
                 HentaicosplaysGalleryHandler,
                 ImgurHandler,
                 InstagramHandler,

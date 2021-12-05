@@ -295,7 +295,10 @@ class RedditHandler(BaseHandler):
                     "PixivWorkExtractor",
                 ):
                     res["url_dict"].setdefault(job.extractor.url, set())
-                elif extractor_name in ("TwitterTimelineExtractor",):
+                elif extractor_name in (
+                    "TwitterTimelineExtractor",
+                    "InstagramUserExtractor",
+                ):
                     logging.debug("skip url, %s", job.extractor.url)
                     pass
                 else:

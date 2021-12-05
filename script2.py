@@ -45,10 +45,10 @@ HandleJobResultType = T.TypedDict(
 )
 
 
-def create_tag(subtag: str, tag_fmt: T.Optional[str] = None) -> str:
+def create_tag(subtag: T.Union[str, int], tag_fmt: T.Optional[str] = None) -> str:
     if tag_fmt:
         return tag_fmt.format(subtag=subtag)
-    c_subtag = subtag.replace(":", " ")
+    c_subtag = str(subtag).replace(":", " ")
     return c_subtag[1:] if c_subtag.startswith("#") else c_subtag
 
 
@@ -87,7 +87,7 @@ class BaseHandler:
                 subitem: T.Union[str, T.List[str]] = item[2].get(key, [])
                 if not subitem:
                     continue
-                if isinstance(subitem, str):
+                if isinstance(subitem, (str, int)):
                     url_dict[item[1]].add(create_tag(subitem, tag_fmt))
                 else:
                     for subtag in subitem:

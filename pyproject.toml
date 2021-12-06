@@ -30,6 +30,9 @@ isort = "^5.10.0"
 ipdb = "^0.13.9"
 nitter-scraper = "^0.5.0"
 
+[tool.poetry.scripts]
+gallery-dl = 'gallery_dl:main'
+
 [tool.pytest.ini_options]
 filterwarnings = [
     "ignore::bs4.GuessedAtParserWarning",

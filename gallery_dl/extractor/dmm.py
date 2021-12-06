@@ -32,9 +32,9 @@ def replace_url(inp: str) -> T.Optional[str]:
         ) and new_url != inp:
             return new_url
     if netloc in ("pics.r18.com", "pics.dmm.co.jp", "pics.avdmm.top"):
-        patt = r"(/digital/+video/+(h_)?[0-9a-z]+[0-9]+/+(h_)?[0-9a-z]+[0-9]+)(-[0-9]+\.[^/.]+)(?:[?#].*)?$"
+        patt = r"(/digital/+video/+(h_)?[0-9a-z]+[0-9]+(r|t)?/+(h_)?[0-9a-z]+[0-9]+(r|t)?)(-[0-9]+\.[^/.]+)(?:[?#].*)?$"
         if (
-            new_url := re.sub(patt, lambda x: x.group(1) + "jp" + x.group(4), inp)
+            new_url := re.sub(patt, lambda x: x.group(1) + "jp" + x.group(6), inp)
         ) and new_url != inp:
             return new_url
 
@@ -136,7 +136,17 @@ class DmmDigitalExtractor(DmmExtractor, GalleryExtractor):
     subcategory = "digital"
 
     def __init__(self, match):
-        super().__init__(match)
+        try:
+            super().__init__(match)
+        except TypeError as err:
+            self.log.debug(
+                {
+                    "match": match,
+                    "match groups": match.groups(),
+                    "url": self.url,
+                    "err": err,
+                }
+            )
         self.gallery_id = match.group(4)
         self.gallery_url = self.url
 

@@ -13,6 +13,7 @@ modules = [
     "bakufu",
     "bi_girl",
     "ddg",
+    "duga",
     "dmm",
     "dtiserv2",
     "erogazou_onaneta",

@@ -6,8 +6,12 @@ import re
 import typing as T
 from urllib import parse
 
-from nitter_scraper import schema, tweets
-from requests_html import HTML, HTMLSession
+try:
+    from nitter_scraper import schema, tweets
+except ImportError:
+    schema = None
+    tweets = None
+from requests_html import HTMLSession
 
 from .common import Extractor, Message
 
@@ -96,6 +100,8 @@ class NitterExtractor(Extractor):
     pattern = BASE_PATTERN
 
     def items(self):
+        if not (schema and tweets):
+            return
         try:
             #  nitter1
             session = HTMLSession()
@@ -143,7 +149,4 @@ class NitterExtractor(Extractor):
                         self.log.error("error value type, %s", val)
                         continue
         except Exception as err:
-            import ipdb
-
-            ipdb.set_trace()
             raise err

@@ -14,7 +14,7 @@ import natsort
 import tqdm
 import yaml
 
-from gallery_dl import config
+from gallery_dl import config, output
 from gallery_dl.exception import NoExtractorError
 from gallery_dl.extractor.common import get_soup
 from gallery_dl.job import DataJob
@@ -417,6 +417,12 @@ def send_url(urls: T.List[str]):
     cl = hydrus.Client(os.getenv("HYDRUS_ACCESS_KEY"))
     jq: "queue.Queue[DataJob]" = queue.Queue()
     config.load()
+    # initialze logging and setup logging handler to stderr
+    output.initialize_logging(logging.WARNING)
+    # apply config options to stderr handler and create file handler
+    output.configure_logging(logging.INFO)
+    # create unsupported-file handler
+    output.setup_logging_handler("unsupportedfile", fmt="{message}")
     err_list: T.List[ErrorItemType] = []
     for url in {x for x in urls if x}:
         try:

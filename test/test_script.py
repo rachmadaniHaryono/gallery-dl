@@ -32,8 +32,8 @@ def test_items(golden, caplog):
     if golden.get("skip"):
         pytest.skip(url)
     job = DataJob(url)
-    job.file = open(os.devnull, "w")
-    with caplog.at_level(logging.DEBUG):
+    with caplog.at_level(logging.DEBUG), open(os.devnull, "w") as f:
+        job.file = f
         job.run()
     output_data = collections.defaultdict(list)
     for item in job.data:

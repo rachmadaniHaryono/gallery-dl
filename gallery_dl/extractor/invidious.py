@@ -8,6 +8,7 @@ from .common import Extractor, Message
 
 BASE_DOMAIN = "localhost:3000"
 BASE_PATTERN = r"(?:https?://)?{}".format(BASE_DOMAIN)
+VIDEO_FMT = "http://www.youtube.com/watch?v={id_}"
 
 
 class InvidiousExtractor(Extractor):
@@ -105,13 +106,16 @@ class InvidiousApiChannelsExtractor(InvidiousExtractor):
                 self.log.debug("no url,%s", self.url)
         else:
             raise ValueError("unknown format, %s", self.url)
-        for key, ids, fmt in [
-            (Message.Queue, playlist_ids, "http://{domain}/api/v1/playlists/{id_}"),
-            (Message.Url, video_ids, "http://localhost:3000/watch?v={id_}"),
+        for key, ids, func in [
+            (
+                Message.Queue,
+                playlist_ids,
+                lambda x: get_api_playlists_url(playlist_id=x),
+            ),
+            (Message.Url, video_ids, lambda x: VIDEO_FMT.format(id_=x)),
         ]:
-            #  invidious
             for id_ in ids:
-                yield key, fmt.format(id_=id_, domain=BASE_DOMAIN), {}
+                yield key, func(id_), {}
 
 
 def get_api_playlists_url(playlist_id: str, page: T.Optional[str] = None) -> str:
@@ -150,7 +154,7 @@ class InvidiousApiPlaylistsExtractor(InvidiousExtractor):
     def items(self):
         resp = self.request(self.url)
         for item in (videos := resp.json().get("videos", [])):
-            yield Message.Queue, f"http://www.youtube.com/watch?v={item['videoId']}", {}
+            yield Message.Queue, VIDEO_FMT.format(id_=item["videoId"]), {}
         if videos:
             page = get_page_query(self.url)
             next_page = int(page) + 1 if page is not None else 2

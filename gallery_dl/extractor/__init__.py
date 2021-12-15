@@ -23,6 +23,7 @@ modules = [
     "novelupdates",
     "r18",
     "reddit_preview",
+    "simple",
     "sokmil",
     "t",
     "youtube",

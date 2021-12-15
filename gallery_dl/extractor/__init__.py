@@ -14,6 +14,7 @@ modules = [
     "bi_girl",
     "ddg",
     "duga",
+    "dvdrev",
     "dmm",
     "dtiserv2",
     "erogazou_onaneta",

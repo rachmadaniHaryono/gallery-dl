@@ -14,13 +14,12 @@ class DmmExtractor(Extractor):
 
 
 class DmmAlExtractor(DmmExtractor):
-    pattern = r"(?:https?://)?al\.dmm.co.jp/\?lurl=https%3A%2F%2Fwww.dmm.co.jp%2Fdigital%2Fvideo.*%2F-%2Fdetail%2F%3D%2Fcid%3D.+"
+    pattern = r"(?:https?://)?al\.dmm.co.jp/\?"
     subcategory = "al"
 
     def items(self):
-        yield Message.Queue, parse.parse_qs(parse.urlparse(self.url).query)["lurl"][
-            0
-        ], {}
+        if url := dict(parse.parse_qsl(parse.urlparse(self.url).query)).get("lurl"):
+            yield Message.Queue, url, {}
 
 
 def replace_url(inp: str) -> T.Optional[str]:

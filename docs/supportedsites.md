@@ -364,7 +364,7 @@ Consider all sites to be NSFW unless otherwise known.
 <tr>
     <td>Inkbunny</td>
     <td>https://inkbunny.net/</td>
-    <td>Favorites, Pools, Posts, User Profiles</td>
+    <td>Favorites, Pools, Posts, Search Results, User Profiles</td>
     <td>Supported</td>
 </tr>
 <tr>
@@ -646,6 +646,12 @@ Consider all sites to be NSFW unless otherwise known.
 <tr>
     <td>rule #34</td>
     <td>https://rule34.paheal.net/</td>
+    <td>Posts, Tag Searches</td>
+    <td></td>
+</tr>
+<tr>
+    <td>Rule 34</td>
+    <td>https://rule34.us/</td>
     <td>Posts, Tag Searches</td>
     <td></td>
 </tr>

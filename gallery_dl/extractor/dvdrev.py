@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import itertools
 import re
 from urllib import parse
 
-from .common import Extractor, Message, get_img_srcs_and_a_hrefs, get_soup
+from .common import Extractor, Message, get_soup
 
 
 class DvdrevExtractor(Extractor):

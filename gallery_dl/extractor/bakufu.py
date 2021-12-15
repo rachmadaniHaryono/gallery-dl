@@ -1,22 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import collections
-import itertools
 import os
 import re
 import typing as T
 from urllib import parse
 
-import bs4
-
 from .. import text
 from .common import Extractor, GalleryExtractor, Message, get_soup
 
 BASE_PATTERN = r"(?:https?://)?bakufu.jp"
-
-
-def list_product(*args):
-    return list(itertools.product(*args))
 
 
 class BakufuExtractor(Extractor):
@@ -46,19 +39,13 @@ class BakufuWpContentsExtractor(BakufuExtractor):
             yield Message.Url, new_url, {}
 
 
-def get_img_srcs_and_img_hrefs(soup: bs4.BeautifulSoup) -> T.Dict[str, T.Set[str]]:
-    return {
-        "a_hrefs": {
-            href.strip()
-            for x in soup.find_all("a")
-            if (href := x.get("href")) and href.strip()
-        },
-        "img_srcs": {
-            src.strip()
-            for x in soup.find_all("img")
-            if (src := x.get("src")) and src.strip()
-        },
-    }
+def get_url_msg(soup):
+    for html_tags, msg, attr in [
+        (soup.select("a"), Message.Queue, "href"),
+        (soup.select("img"), Message.Queue, "src"),
+    ]:
+        for html_tag in html_tags:
+            yield html_tag.get(attr), msg
 
 
 class BakufuCategoryExtractor(BakufuExtractor):
@@ -67,18 +54,17 @@ class BakufuCategoryExtractor(BakufuExtractor):
 
     def items(self):
         soup = get_soup(self.request(self.url).content)
-        soup_res = get_img_srcs_and_img_hrefs(soup)
         s_url_netloc = parse.urlparse(self.url).netloc
-        for item in {
-            href.strip()
-            for x in soup.select("article h1.entry-title a")
-            if (href := x.get("href", None)) and href.strip()
-        }:
-            yield Message.Queue, item, {}
-        for url, msg in [  # type: ignore
-            *list_product(soup_res.get("a_hrefs", set()), [Message.Queue]),
-            *list_product(soup_res.get("img_srcs", set()), [Message.Url]),
-        ]:
+        url_msg = list(get_url_msg(soup))
+        for html_tag in soup.select("article h1.entry-title a"):
+            if (val := html_tag.get("href")) and isinstance(val, list):
+                for item in val:
+                    url_msg.append((item, Message.Queue))
+            elif isinstance(val, str):
+                url_msg.append((val, Message.Queue))
+            else:
+                self.log.debug(f"unknown href value, {val}")
+        for url, msg in url_msg:
             if url.startswith("//"):
                 url = "https:" + url
             elif url.startswith("/"):
@@ -127,20 +113,18 @@ class BakufuGalleryExtractor(BakufuExtractor, GalleryExtractor):
     pattern = BASE_PATTERN + r"(/archives/\d+)"
     root = "http://bakufu.jp"
 
+    def init_soup(self, page=None):
+        if not hasattr(self, "soup"):
+            if page is None:
+                raise ValueError("Empty page")
+            self.soup = get_soup(page)
+        return self.soup
+
     def items(self):
         try:
             yield from super().items()
-            soup = (
-                self.soup
-                if hasattr(self, "soup")
-                else get_soup(self.request(self.url).content)
-            )
-            soup_res = get_img_srcs_and_img_hrefs(soup)
             s_url_netloc = parse.urlparse(self.url).netloc
-            for url, msg in [  # type: ignore
-                *list_product(soup_res.get("a_hrefs", set()), [Message.Queue]),
-                *list_product(soup_res.get("img_srcs", set()), [Message.Url]),
-            ]:
+            for url, msg in get_url_msg(self.init_soup()):
                 if url.startswith("//"):
                     url = "https:" + url
                 elif url.startswith("/"):
@@ -191,10 +175,7 @@ class BakufuGalleryExtractor(BakufuExtractor, GalleryExtractor):
 
     def metadata(self, page: str) -> T.Dict[str, T.Any]:
         """Return a dict with general metadata"""
-        soup = get_soup(page)
-        if not hasattr(self, "soup"):
-            self.soup = soup
-        soup = self.soup
+        soup = self.init_soup(page)
         data = collections.defaultdict(list)
         for html_tag in soup.select("footer.entry-meta a"):
             data["category_"].append(html_tag.text)
@@ -203,9 +184,7 @@ class BakufuGalleryExtractor(BakufuExtractor, GalleryExtractor):
         return data
 
     def images(self, page: str):
-        soup = get_soup(page)
-        if not hasattr(self, "soup"):
-            self.soup = soup
+        soup = self.init_soup(page)
         main_img_urls = []
 
         def update_data(data, url):

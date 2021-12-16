@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import re
+import typing as T
 from urllib import parse
 
 import bs4
@@ -33,11 +34,12 @@ class BiGirlSearchImageExtractor(BiGirlExtractor):
                 (soup.select("a"), Message.Queue, "href"),
                 (soup.select("img"), Message.Queue, "src"),
             ]:
-                item = set()
+                item: T.Set[T.Optional[str]] = set()
                 for html_tag in html_tags:
                     item.add(html_tag.get(attr))
-                url: str
                 for url in item:
+                    if not url:
+                        continue
                     if url.startswith("//"):
                         url = "https:" + url
                     p_url = parse.urlparse(url)

@@ -284,6 +284,7 @@ class BakufuHandler(BaseHandler):
         "title": "thread:{subtag}",
     }
 
+
 class HentaicosplaysGalleryHandler(BaseHandler):
     extractors = ("HentaicosplaysGalleryExtractor",)
     key_dict = {

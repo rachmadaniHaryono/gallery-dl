@@ -153,7 +153,8 @@ class _4chanHandler(BaseHandler):
     def handle_job(cls, job: DataJob, url_dict: UrlDictType) -> HandleJobResultType:
         cls.key_dict["title"] = "thread:{subtag}"
         cls.key_dict["filename"] = "filename:{subtag}"
-        del cls.key_dict["thread"]
+        if "thread" in cls.key_dict:
+            del cls.key_dict["thread"]
         res = super(cls, cls).handle_job(job=job, url_dict=url_dict)
         res.setdefault("url_dict", UrlDictType())
         for item in filter(lambda x: x[0] == 3 and x[2], job.data):

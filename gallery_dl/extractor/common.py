@@ -353,7 +353,8 @@ class Extractor(metaclass=abc.ABCMeta):
         now = time.time()
 
         for cookie in self._cookiejar:
-            if cookie.name in names and cookie.domain == domain:
+            if cookie.name in names and (
+                    not domain or cookie.domain == domain):
                 if cookie.expires and cookie.expires < now:
                     self.log.warning("Cookie '%s' has expired", cookie.name)
                 else:

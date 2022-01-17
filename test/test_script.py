@@ -10,6 +10,7 @@ from unittest import mock
 
 import pytest
 import yaml
+from pytest_golden.plugin import GoldenTestFixture
 
 from gallery_dl import extractor
 from gallery_dl import hydrus as sc
@@ -68,7 +69,7 @@ def test_handler(golden, caplog):
         if key not in golden.path.name:
             pytest.skip('"{key}" not in golden.path.name: {golden.path.name}')
         else:
-            name = golden.path.name.split("test_handler_", 1)[1].rsplit(".yaml", 1)[0]
+            name = golden.path.name.split(key, 1)[1].rsplit(".yaml", 1)[0]
     except IndexError as err:
         logging.error("golden.path.name: {}".format(golden.path.name), exc_info=True)
         raise err
@@ -122,11 +123,16 @@ def test_handler(golden, caplog):
     )
 
 
+def get_golden_key(golden_obj: GoldenTestFixture, key: str) -> T.Optional[T.Any]:
+    item = None
+    if not (hasattr(golden_obj, "get") and (item := golden_obj.get(key))):
+        return item
+
+
 @pytest.mark.golden_test("data/test_url_*.yaml")
 def test_url(golden):
     output_data = []
-    urls = []
-    if hasattr(golden, "get") and (urls := golden.get("urls", [])):
+    if not (urls := get_golden_key(golden, "urls")):
         pytest.skip("no urls")
     for url in urls:
         try:
@@ -144,7 +150,7 @@ def test_url(golden):
 def test_replace_url(golden):
     output_data = []
     urls = []
-    if hasattr(golden, "get") and (urls := golden.get("urls", [])):
+    if not (urls := get_golden_key(golden, "urls")):
         pytest.skip("no urls")
     for url in urls:
         try:

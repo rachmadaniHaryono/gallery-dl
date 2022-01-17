@@ -63,7 +63,15 @@ def test_items(golden, caplog):
 
 @pytest.mark.golden_test("data/test_handler_*.yaml")
 def test_handler(golden, caplog):
-    name = golden.path.name.split("test_handler_", 1)[1].rsplit(".yaml", 1)[0]
+    try:
+        key = "test_handler_"
+        if key not in golden.path.name:
+            pytest.skip('"{key}" not in golden.path.name: {golden.path.name}')
+        else:
+            name = golden.path.name.split("test_handler_", 1)[1].rsplit(".yaml", 1)[0]
+    except IndexError as err:
+        logging.error("golden.path.name: {}".format(golden.path.name), exc_info=True)
+        raise err
     job = mock.Mock()
     with (
         pathlib.Path(__file__).parent / "data" / f"test_items_{name}.yaml"
@@ -117,12 +125,17 @@ def test_handler(golden, caplog):
 @pytest.mark.golden_test("data/test_url_*.yaml")
 def test_url(golden):
     output_data = []
-    for url in golden["urls"]:
+    urls = []
+    if hasattr(golden, "get") and (urls := golden.get("urls", [])):
+        pytest.skip("no urls")
+    for url in urls:
         try:
             output_data.append([url, DataJob(url).extractor.__class__.__name__])
         except Exception as err:
             logging.error("url:%s", url)
             raise err
+    if not hasattr(golden, "out"):
+        pytest.skip("no output data\nurls: {urls}")
     assert sorted_list(output_data) == golden.out["outputs"]
     assert sorted_list_set(golden["urls"]) == golden.out["urls"]
 
@@ -130,7 +143,10 @@ def test_url(golden):
 @pytest.mark.golden_test("data/test_replace_url_*.yaml")
 def test_replace_url(golden):
     output_data = []
-    for url in golden["urls"]:
+    urls = []
+    if hasattr(golden, "get") and (urls := golden.get("urls", [])):
+        pytest.skip("no urls")
+    for url in urls:
         try:
             output_data.append(
                 [url, getattr(extractor, golden["extractor"]).replace_url(url)]
@@ -138,5 +154,7 @@ def test_replace_url(golden):
         except Exception as err:
             logging.error("url:%s", url)
             raise err
+    if not hasattr(golden, "out"):
+        pytest.skip("no output data\nurls: {urls}")
     assert sorted_list(output_data) == golden.out["outputs"]
     assert sorted_list_set(golden["urls"]) == golden.out["urls"]

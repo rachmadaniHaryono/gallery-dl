@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 import collections
 import html
 import logging
@@ -12,6 +13,7 @@ from urllib import parse
 import hydrus
 import natsort
 import tqdm
+import typer
 import yaml
 
 from gallery_dl import config, output
@@ -57,6 +59,7 @@ class BaseHandler:
 
     url_set is used to avoid duplicate url when creating new job.
     """
+
     extractors: T.Sequence[str]
 
     key_dict = {
@@ -296,7 +299,6 @@ class HentaicosplaysGalleryHandler(BaseHandler):
 class RedditHandler(BaseHandler):
     extractors = ("RedditSubmissionExtractor",)
 
-
     key_dict = {
         "author": "uploader:{subtag}",
         "link_flair_text": "category:{subtag}",
@@ -416,7 +418,12 @@ class NhentaiHandler(BaseHandler):
         return HandleJobResultType(url_dict=url_dict)
 
 
+app = typer.Typer()
+
+
+@app.command()
 def send_url(urls: T.List[str]):
+    """send url to hydrus"""
     cl = hydrus.Client(os.getenv("HYDRUS_ACCESS_KEY"))
     jq: "queue.Queue[DataJob]" = queue.Queue()
     config.load()
@@ -529,3 +536,12 @@ def send_url(urls: T.List[str]):
             if val := err.get(key, None):
                 msg_parts.extend([" " + key, str(val)])
         logging.error(":".join(msg_parts))
+
+
+@app.command()
+def subcommand2():
+    """wip"""
+
+
+if __name__ == "__main__":
+    app()

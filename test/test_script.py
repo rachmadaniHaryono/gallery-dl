@@ -123,7 +123,7 @@ def test_handler(golden, caplog):
     )
 
 
-def get_golden_key(golden_obj: GoldenTestFixture, key: str) -> T.Optional[T.Any]:
+def get_golden_item(golden_obj: GoldenTestFixture, key: str) -> T.Optional[T.Any]:
     item = None
     if not (hasattr(golden_obj, "get") and (item := golden_obj.get(key))):
         return item
@@ -132,7 +132,7 @@ def get_golden_key(golden_obj: GoldenTestFixture, key: str) -> T.Optional[T.Any]
 @pytest.mark.golden_test("data/test_url_*.yaml")
 def test_url(golden):
     output_data = []
-    if not (urls := get_golden_key(golden, "urls")):
+    if not (urls := get_golden_item(golden, "urls")):
         pytest.skip("no urls")
     for url in urls:
         try:
@@ -150,7 +150,7 @@ def test_url(golden):
 def test_replace_url(golden):
     output_data = []
     urls = []
-    if not (urls := get_golden_key(golden, "urls")):
+    if not (urls := get_golden_item(golden, "urls")):
         pytest.skip("no urls")
     for url in urls:
         try:

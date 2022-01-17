@@ -11,8 +11,8 @@ from unittest import mock
 import pytest
 import yaml
 
-import script2 as sc
 from gallery_dl import extractor
+from gallery_dl import hydrus as sc
 from gallery_dl.job import DataJob, config
 
 

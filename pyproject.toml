@@ -20,6 +20,7 @@ natsort = "^8.0.0"
 beautifulsoup4 = "^4.10.0"
 more-itertools = "^8.11.0"
 yt-dlp = "^2021.12.1"
+typer = "^0.4.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
@@ -32,6 +33,7 @@ nitter-scraper = "^0.5.0"
 
 [tool.poetry.scripts]
 gallery-dl = 'gallery_dl:main'
+gallery-dl-hydrus = 'gallery_dl.hydrus:app'
 
 [tool.pytest.ini_options]
 filterwarnings = [

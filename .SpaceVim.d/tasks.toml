@@ -1,3 +1,7 @@
+[pytest-current-file]
+command = 'poetry'
+args = ['run', 'pytest', '-k', '${fileBasenameNoExtension}']
+
 [pytest-update-goldens-current-file]
 command = 'poetry'
 args = ['run', 'pytest', '-k', '${fileBasenameNoExtension}', '--update-goldens']

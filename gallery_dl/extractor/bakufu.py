@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import collections
+import logging
 import os
 import re
 import typing as T
 from urllib import parse
+
+import bs4
 
 from .. import text
 from .common import Extractor, GalleryExtractor, Message, get_soup
@@ -39,13 +42,24 @@ class BakufuWpContentsExtractor(BakufuExtractor):
             yield Message.Url, new_url, {}
 
 
-def get_url_msg(soup):
+def get_url_msg(
+    soup: bs4.BeautifulSoup, img_msg: int = Message.Queue
+) -> T.Iterator[T.Tuple[str, int]]:
+    html_tags: bs4.element.ResultSet[bs4.element.Tag]
     for html_tags, msg, attr in [
         (soup.select("a"), Message.Queue, "href"),
-        (soup.select("img"), Message.Queue, "src"),
+        (soup.select("img"), img_msg, "src"),
     ]:
         for html_tag in html_tags:
-            yield html_tag.get(attr), msg
+            if not (val := html_tag.get(attr)):
+                continue
+            if isinstance(val, list):
+                for subval in val:
+                    yield subval, msg
+            elif isinstance(val, str):
+                yield val, msg
+            else:
+                logging.warning("unknown type,%s,%s", type(val), val)
 
 
 class BakufuCategoryExtractor(BakufuExtractor):
@@ -123,33 +137,45 @@ class BakufuGalleryExtractor(BakufuExtractor, GalleryExtractor):
     def items(self):
         try:
             yield from super().items()
-            s_url_netloc = parse.urlparse(self.url).netloc
-            for url, msg in get_url_msg(self.init_soup()):
+            for url, msg in get_url_msg(self.init_soup(), img_msg=Message.Url):
                 if url.startswith("//"):
                     url = "https:" + url
                 elif url.startswith("/"):
                     url = parse.urljoin(self.url, url)
                 p_url = parse.urlparse(url)
                 cont = False
-                for cond, dbg_msg in [
-                    (
-                        lambda: p_url.netloc == s_url_netloc,
-                        "recursive netloc,%s",
-                    ),
-                    (
-                        lambda: p_url.netloc in self.exclude_external_netloc,
-                        "exclude netloc,%s",
-                    ),
-                    (
-                        lambda: self.exclude_external_regex
-                        and any(re.match(x, url) for x in self.exclude_external_regex),
-                        "exclude regex,%s",
-                    ),
-                    (lambda: url in self.main_img_urls, "match main img urls,%s"),
-                ]:
+                for idx, (cond, dbg_msg) in enumerate(
+                    [
+                        (
+                            lambda: p_url.netloc not in ("al.dmm.co.jp",)
+                            and p_url.path in ("/", "//"),
+                            "exclude homepage",
+                        ),
+                        (
+                            lambda: p_url.netloc == parse.urlparse(self.url).netloc,
+                            "recursive netloc",
+                        ),
+                        (
+                            lambda: p_url.netloc in self.exclude_external_netloc,
+                            "exclude netloc",
+                        ),
+                        (
+                            lambda: self.exclude_external_regex
+                            and any(
+                                re.match(x, url) for x in self.exclude_external_regex
+                            ),
+                            "exclude regex",
+                        ),
+                        (lambda: url in self.main_img_urls, "match main img urls"),
+                    ]
+                ):
                     if cond():
-                        self.log.debug(dbg_msg, url)
+                        self.log.debug(",".join([dbg_msg, "%s"]), url)
                         cont = True
+                        if idx == 2:
+                            self.log.debug(
+                                ",".join(["netloc blocked", "%s"]), p_url.netloc
+                            )
                         break
                 if cont:
                     continue

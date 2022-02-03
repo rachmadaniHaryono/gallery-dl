@@ -200,7 +200,7 @@ class TwitterExtractor(Extractor):
             else:
                 bval = bvals["unified_card"]["string_value"]
             data = json.loads(bval)
-            if data["type"] == "image_carousel_website":
+            if data.get("type") == "image_carousel_website":
                 self._extract_media(
                     tweet, data["media_entities"].values(), files)
                 return
@@ -399,10 +399,20 @@ class TwitterTimelineExtractor(TwitterExtractor):
     pattern = (BASE_PATTERN + r"/(?!search)(?:([^/?#]+)/?(?:$|[?#])"
                r"|i(?:/user/|ntent/user\?user_id=)(\d+))")
     test = (
-        ("https://twitter.com/supernaturepics", {
-            "range": "1-40",
-            "url": "c570ac1aae38ed1463be726cc46f31cac3d82a40",
-        }),
+        (
+            "https://twitter.com/supernaturepics",
+            {
+                "range": "1-40",
+                "url": "c570ac1aae38ed1463be726cc46f31cac3d82a40",
+            },
+        ),
+        # suspended account (#2216)
+        (
+            "https://twitter.com/realDonaldTrump",
+            {
+                "exception": exception.NotFoundError,
+            },
+        ),
         ("https://mobile.twitter.com/supernaturepics?p=i"),
         ("https://www.twitter.com/id:2976459548"),
         ("https://twitter.com/i/user/2976459548"),
@@ -632,6 +642,13 @@ class TwitterTweetExtractor(TwitterExtractor):
             "pattern": r"https://pbs\.twimg\.com/media/F.+=png",
             "count": 6,
         }),
+        # unified_card without type
+        (
+            "https://twitter.com/i/web/status/1466183847628865544",
+            {
+                "count": 0,
+            },
+        ),
         # original retweets (#1026)
         ("https://twitter.com/jessica_3978/status/1296304589591810048", {
             "options": (("retweets", "original"),),
@@ -648,10 +665,20 @@ class TwitterTweetExtractor(TwitterExtractor):
             "count": ">= 50",
         }),
         # retweet with missing media entities (#1555)
-        ("https://twitter.com/morino_ya/status/1392763691599237121", {
-            "options": (("retweets", True),),
-            "count": 4,
-        }),
+        (
+            "https://twitter.com/morino_ya/status/1392763691599237121",
+            {
+                "options": (("retweets", True),),
+                "count": 4,
+            },
+        ),
+        # deleted quote tweet (#2225)
+        (
+            "https://twitter.com/i/web/status/1460044411165888515",
+            {
+                "count": 0,
+            },
+        ),
     )
 
     def __init__(self, match):
@@ -767,7 +794,10 @@ class TwitterAPI():
             "__fs_interactive_text": False,
             "__fs_dont_mention_me_view_api_enabled": False,
         }
+
+        self._log_warnings = extractor.config("warnings")
         self._json_dumps = json.JSONEncoder(separators=(",", ":")).encode
+        self._user = None
 
         cookies = extractor.session.cookies
         cookiedomain = extractor.cookiedomain
@@ -801,7 +831,7 @@ class TwitterAPI():
             endpoint, variables, ("threaded_conversation_with_injections",))
 
     def user_tweets(self, screen_name):
-        endpoint = "/graphql/DhQ8lYnLh5T5K8aVUgHVnQ/UserTweets"
+        endpoint = "/graphql/LNhjy8t3XpIrBYM-ms7sPQ/UserTweets"
         variables = {
             "userId": self._user_id_by_screen_name(screen_name),
             "count": 100,
@@ -810,7 +840,7 @@ class TwitterAPI():
         return self._pagination_tweets(endpoint, variables)
 
     def user_tweets_and_replies(self, screen_name):
-        endpoint = "/graphql/CwLU7qTfeu0doqhSr6tW4A/UserTweetsAndReplies"
+        endpoint = "/graphql/Vg5aF036K40ST3FWvnvRGA/UserTweetsAndReplies"
         variables = {
             "userId": self._user_id_by_screen_name(screen_name),
             "count": 100,
@@ -819,7 +849,7 @@ class TwitterAPI():
         return self._pagination_tweets(endpoint, variables)
 
     def user_media(self, screen_name):
-        endpoint = "/graphql/NeBRhmkLMUxQkGpBtQ4k5w/UserMedia"
+        endpoint = "/graphql/Hl6C7ac051l_QBe3HjGz_A/UserMedia"
         variables = {
             "userId": self._user_id_by_screen_name(screen_name),
             "count": 100,
@@ -827,7 +857,7 @@ class TwitterAPI():
         return self._pagination_tweets(endpoint, variables)
 
     def user_likes(self, screen_name):
-        endpoint = "/graphql/qICyoimVKJRJdX5UX5a_Gg/Likes"
+        endpoint = "/graphql/smISlRVSnz-GaU_XpU_akw/Likes"
         variables = {
             "userId": self._user_id_by_screen_name(screen_name),
             "count": 100,
@@ -835,7 +865,7 @@ class TwitterAPI():
         return self._pagination_tweets(endpoint, variables)
 
     def user_bookmarks(self):
-        endpoint = "/graphql/WgbaxqmzjFP7oxkh_PkW4g/Bookmarks"
+        endpoint = "/graphql/yKNebSjZKbo2tOd-Qdc7Xg/Bookmarks"
         variables = {
             "count": 100,
         }
@@ -843,7 +873,7 @@ class TwitterAPI():
             endpoint, variables, ("bookmark_timeline", "timeline"))
 
     def list_latest_tweets_timeline(self, list_id):
-        endpoint = "/graphql/mwIBwcZV981Bnjb2lPNYfw/ListLatestTweetsTimeline"
+        endpoint = "/graphql/RxUL5UHi4Msxt_P9O1729w/ListLatestTweetsTimeline"
         variables = {
             "listId": list_id,
             "count": 100,
@@ -889,7 +919,7 @@ class TwitterAPI():
             raise exception.NotFoundError("list")
 
     def list_members(self, list_id):
-        endpoint = "/graphql/Ke6urWMeCV2UlKXGRy4sow/ListMembers"
+        endpoint = "/graphql/kk9RQtSa2sc-4_9figZVBw/ListMembers"
         variables = {
             "listId": list_id,
             "count": 100,
@@ -899,12 +929,25 @@ class TwitterAPI():
             endpoint, variables, ("list", "members_timeline", "timeline"))
 
     def user_following(self, screen_name):
-        endpoint = "/graphql/HBTc0rkOSBXmfSmT7GKEMA/Following"
+        endpoint = "/graphql/kz464_e4MAOXc3bGOA9kow/Following"
         variables = {
             "userId": self._user_id_by_screen_name(screen_name),
             "count": 100,
         }
         return self._pagination_users(endpoint, variables)
+
+    def user_by_rest_id(self, rest_id):
+        endpoint = "/graphql/I5nvpI91ljifos1Y3Lltyg/UserByRestId"
+        params = {
+            "variables": self._json_dumps(
+                {
+                    "userId": rest_id,
+                    "withSafetyModeUserFields": True,
+                    "withSuperFollowsUserFields": True,
+                }
+            )
+        }
+        return self._call(endpoint, params)["data"]["user"]["result"]
 
     def user_by_screen_name(self, screen_name):
         endpoint = "/graphql/7mjxD3-C6BxitPMVQ6w0-Q/UserByScreenName"
@@ -917,11 +960,12 @@ class TwitterAPI():
 
     def _user_id_by_screen_name(self, screen_name):
         if screen_name.startswith("id:"):
+            self._user = util.SENTINEL
             return screen_name[3:]
 
         user = ()
         try:
-            user = self.user_by_screen_name(screen_name)
+            user = self._user = self.user_by_screen_name(screen_name)
             return user["rest_id"]
         except KeyError:
             if "unavailable_message" in user:
@@ -937,7 +981,7 @@ class TwitterAPI():
         endpoint = "/1.1/guest/activate.json"
         return str(self._call(endpoint, None, root, "POST")["guest_token"])
 
-    def _call(self, endpoint, params, root=None, method="GET", warning=True):
+    def _call(self, endpoint, params, root=None, method="GET"):
         if root is None:
             root = self.root
 
@@ -962,7 +1006,7 @@ class TwitterAPI():
 
             if response.status_code < 400:
                 # success
-                if errors and warning:
+                if errors and self._log_warnings:
                     self.extractor.log.warning(errors)
                 return data
 
@@ -972,22 +1016,6 @@ class TwitterAPI():
                 seconds = None if until else 60
                 self.extractor.wait(until=until, seconds=seconds)
                 continue
-
-            if response.status_code == 401 and \
-                    "have been blocked from viewing" in errors:
-                # account blocked
-                extr = self.extractor
-                if self.headers["x-twitter-auth-type"] and \
-                        extr.config("logout"):
-                    guest_token = self._guest_token()
-                    extr.session.cookies.set(
-                        "gt", guest_token, domain=extr.cookiedomain)
-                    extr._cookiefile = None
-                    del extr.session.cookies["auth_token"]
-                    self.headers["x-guest-token"] = guest_token
-                    self.headers["x-twitter-auth-type"] = None
-                    extr.log.info("Retrying API request as guest")
-                    continue
 
             # error
             raise exception.StopExtraction(
@@ -1078,9 +1106,10 @@ class TwitterAPI():
             params["cursor"] = cursor
 
     def _pagination_tweets(self, endpoint, variables, path=None):
+        extr = self.extractor
         variables.update(self.variables)
-        original_retweets = (self.extractor.retweets == "original")
-        pinned_tweet = self.extractor.pinned
+        original_retweets = extr.retweets == "original"
+        pinned_tweet = extr.pinned
 
         while True:
             params = {"variables": self._json_dumps(variables)}
@@ -1091,13 +1120,50 @@ class TwitterAPI():
                     instructions = (data["user"]["result"]["timeline"]
                                     ["timeline"]["instructions"])
                 else:
+                    instructions = data
                     for key in path:
-                        data = data[key]
-                    instructions = data["instructions"]
+                        instructions = instructions[key]
+                    instructions = instructions["instructions"]
 
                 entries = instructions[0]["entries"]
             except (KeyError, IndexError):
-                return
+                extr.log.debug(data)
+
+                if self._user:
+                    user = self._user
+                    if user is util.SENTINEL:
+                        try:
+                            user = self.user_by_rest_id(variables["userId"])
+                        except KeyError:
+                            raise exception.NotFoundError("user")
+                    user = user.get("legacy")
+                    if not user:
+                        pass
+                    elif user.get("blocked_by"):
+                        if self.headers["x-twitter-auth-type"] and extr.config(
+                            "logout"
+                        ):
+                            guest_token = self._guest_token()
+                            extr.session.cookies.set(
+                                "gt", guest_token, domain=extr.cookiedomain
+                            )
+                            extr._cookiefile = None
+                            del extr.session.cookies["auth_token"]
+                            self.headers["x-guest-token"] = guest_token
+                            self.headers["x-twitter-auth-type"] = None
+                            extr.log.info("Retrying API request as guest")
+                            continue
+                        raise exception.AuthorizationError(
+                            "{} blocked your account".format(user["screen_name"])
+                        )
+                    elif user.get("protected"):
+                        raise exception.AuthorizationError(
+                            "{}'s Tweets are protected".format(user["screen_name"])
+                        )
+
+                raise exception.StopExtraction(
+                    "Unable to retrieve Tweets from this timeline"
+                )
 
             tweets = []
             tweet = cursor = None
@@ -1123,44 +1189,60 @@ class TwitterAPI():
                         tweet = True
                     cursor = cursor.get("value")
 
-            for tweet in tweets:
+            for entry in tweets:
                 try:
-                    tweet = ((tweet.get("content") or tweet["item"])
-                             ["itemContent"]["tweet_results"]["result"])
+                    tweet = (entry.get("content") or entry["item"])["itemContent"][
+                        "tweet_results"
+                    ]["result"]
+                    legacy = tweet["legacy"]
                 except KeyError:
-                    self.extractor.log.debug(
+                    extr.log.debug(
                         "Skipping %s (deleted)",
-                        tweet["entryId"].rpartition("-")[2])
+                        (entry.get("entryId") or "").rpartition("-")[2],
+                    )
                     continue
 
-                legacy = tweet["legacy"]
                 if "retweeted_status_result" in legacy:
                     retweet = legacy["retweeted_status_result"]["result"]
                     if original_retweets:
-                        if not retweet:
+                        try:
+                            retweet["legacy"]["retweeted_status_id_str"] = retweet[
+                                "rest_id"
+                            ]
+                            retweet["_retweet_id_str"] = tweet["rest_id"]
+                            tweet = retweet
+                        except KeyError:
                             continue
-                        retweet["legacy"]["retweeted_status_id_str"] = \
-                            retweet["rest_id"]
-                        retweet["_retweet_id_str"] = tweet["rest_id"]
-                        tweet = retweet
-                    elif retweet:
-                        legacy["retweeted_status_id_str"] = \
-                            retweet["rest_id"]
-                        legacy["author"] = \
-                            retweet["core"]["user_results"]["result"]
-                        if "extended_entities" in retweet["legacy"] and \
-                                "extended_entities" not in legacy:
-                            legacy["extended_entities"] = \
-                                retweet["legacy"]["extended_entities"]
+                    else:
+                        try:
+                            legacy["retweeted_status_id_str"] = retweet["rest_id"]
+                            legacy["author"] = retweet["core"]["user_results"]["result"]
+                            if (
+                                "extended_entities" in retweet["legacy"]
+                                and "extended_entities" not in legacy
+                            ):
+                                legacy["extended_entities"] = retweet["legacy"][
+                                    "extended_entities"
+                                ]
+                        except KeyError:
+                            pass
+
                 yield tweet
 
                 if "quoted_status_result" in tweet:
-                    quoted = tweet["quoted_status_result"]["result"]
-                    quoted["legacy"]["author"] = \
-                        quoted["core"]["user_results"]["result"]
-                    quoted["core"] = tweet["core"]
-                    quoted["legacy"]["quoted_by_id_str"] = tweet["rest_id"]
-                    yield quoted
+                    try:
+                        quoted = tweet["quoted_status_result"]["result"]
+                        quoted["legacy"]["author"] = quoted["core"]["user_results"][
+                            "result"
+                        ]
+                        quoted["core"] = tweet["core"]
+                        quoted["legacy"]["quoted_by_id_str"] = tweet["rest_id"]
+                        yield quoted
+                    except KeyError:
+                        extr.log.debug(
+                            "Skipping quote of %s (deleted)", tweet.get("rest_id")
+                        )
+                        continue
 
             if not tweet or not cursor:
                 return

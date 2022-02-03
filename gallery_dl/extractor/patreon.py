@@ -25,6 +25,7 @@ class PatreonExtractor(Extractor):
     filename_fmt = "{id}_{title}_{num:>02}.{extension}"
     archive_fmt = "{id}_{num}"
     browser = "firefox"
+    tls12 = False
     _warning = True
 
     def items(self):

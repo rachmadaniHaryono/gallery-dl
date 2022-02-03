@@ -66,6 +66,7 @@ class DmmListExtractor(DmmExtractor):
         super().__init__(match)
         self.exclude_external_netloc = self.config("exclude_external_netloc", [])
         self.exclude_external_regex = self.config("exclude_external_regex", [])
+        self.next_page = self.config("next_page", True)
 
     def items(self):
         soup = get_soup(self.request(self.url).content)
@@ -112,11 +113,13 @@ class DmmListExtractor(DmmExtractor):
             if cont:
                 continue
             yield Message.Queue, val, {}
-        if html_tags := [
-            x.get("href")
-            for x in soup.select("div.list-boxcaptside.list-boxpagenation ul li a")
-            if x.text == "次へ"
-        ]:
+        if self.next_page and (
+            html_tags := [
+                x.get("href")
+                for x in soup.select("div.list-boxcaptside.list-boxpagenation ul li a")
+                if x.text == "次へ"
+            ]
+        ):
             if len(html_tags) > 1:
                 self.log.warning(
                     "value return more,%s", str([str(x) for x in html_tags])

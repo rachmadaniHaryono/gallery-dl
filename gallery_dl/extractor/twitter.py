@@ -188,6 +188,11 @@ class TwitterExtractor(Extractor):
                     if key in bvals:
                         value = bvals[key].get("image_value")
                         if value and "url" in value:
+                            base, sep, size = value["url"].rpartition("&name=")
+                            if sep:
+                                base += sep
+                                value["url"] = base + self._size_image
+                                value["_fallback"] = self._image_fallback(base)
                             files.append(value)
                             return
         elif name == "unified_card":
@@ -1125,7 +1130,13 @@ class TwitterAPI():
                         instructions = instructions[key]
                     instructions = instructions["instructions"]
 
-                entries = instructions[0]["entries"]
+                for instr in instructions:
+                    if instr.get("type") == "TimelineAddEntries":
+                        entries = instr["entries"]
+                        break
+                else:
+                    raise KeyError()
+
             except (KeyError, IndexError):
                 extr.log.debug(data)
 

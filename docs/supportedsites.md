@@ -148,7 +148,7 @@ Consider all sites to be NSFW unless otherwise known.
 <tr>
     <td>e621</td>
     <td>https://e621.net/</td>
-    <td>Pools, Popular Images, Posts, Tag Searches</td>
+    <td>Favorites, Pools, Popular Images, Posts, Tag Searches</td>
     <td>Supported</td>
 </tr>
 <tr>
@@ -395,6 +395,12 @@ Consider all sites to be NSFW unless otherwise known.
     <td>Khinsider</td>
     <td>https://downloads.khinsider.com/</td>
     <td>Soundtracks</td>
+    <td></td>
+</tr>
+<tr>
+    <td>Kohlchan</td>
+    <td>https://kohlchan.net/</td>
+    <td>Boards, Threads</td>
     <td></td>
 </tr>
 <tr>
@@ -676,7 +682,7 @@ Consider all sites to be NSFW unless otherwise known.
 <tr>
     <td>Sex.com</td>
     <td>https://www.sex.com/</td>
-    <td>Boards, Pins, related Pins, Search Results</td>
+    <td>Boards, Pins, User Pins, related Pins, Search Results</td>
     <td></td>
 </tr>
 <tr>

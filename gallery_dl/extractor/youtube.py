@@ -50,3 +50,14 @@ class Youtu_beExtractor(YoutubeExtractor):
 
     def items(self):
         yield Message.Url, self.url, {}
+
+
+class YoutubeEmbedExtractor(YoutubeExtractor):
+    pattern = BASE_PATTERN + r"/embed/.*"
+    subcategory = "embed"
+
+    def items(self):
+        if (url_paths := parse.urlparse(self.url).path.split("/")) and len(
+            url_paths
+        ) > 2:
+            yield Message.Url, f"https://youtu.be/{url_paths[2]}", {}

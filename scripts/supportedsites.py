@@ -20,6 +20,7 @@ CATEGORY_MAP = {
     "archiveofsins"  : "Archive of Sins",
     "artstation"     : "ArtStation",
     "aryion"         : "Eka's Portal",
+    "atfbooru"       : "ATFBooru",
     "b4k"            : "arch.b4k.co",
     "baraag"         : "baraag",
     "bbc"            : "BBC",
@@ -110,6 +111,7 @@ CATEGORY_MAP = {
     "vk"             : "VK",
     "vsco"           : "VSCO",
     "wakarimasen"    : "Wakarimasen Archive",
+    "wallpapercave"  : "Wallpaper Cave",
     "webtoons"       : "Webtoon",
     "wikiart"        : "WikiArt.org",
     "xhamster"       : "xHamster",
@@ -138,6 +140,12 @@ SUBCATEGORY_MAP = {
 
     "artstation": {
         "artwork": "Artwork Listings",
+    },
+    "atfbooru": {
+        "favorite": "",
+    },
+    "danbooru": {
+        "favorite": "",
     },
     "desktopography": {
         "site": "",
@@ -196,6 +204,9 @@ SUBCATEGORY_MAP = {
     "wallhaven": {
         "collections": "",
     },
+    "wallpapercave": {
+        "image": "individual Images, Search Results",
+    },
     "weasyl": {
         "journals"   : "",
         "submissions": "",
@@ -225,6 +236,7 @@ _APIKEY_WY = \
 
 AUTH_MAP = {
     "aryion"         : "Supported",
+    "atfbooru"       : "Supported",
     "baraag"         : _OAUTH,
     "danbooru"       : "Supported",
     "derpibooru"     : _APIKEY_DB,
@@ -349,6 +361,14 @@ def build_extractor_list():
             for category, root in extr.instances:
                 base[category].append(extr.subcategory)
                 if category not in domains:
+                    if not root:
+                        # use domain from first matching test
+                        for url, _ in extr._get_tests():
+                            if extr.from_url(url).category == category:
+                                root = url[:url.index("/", 8)]
+                                break
+                        else:
+                            continue
                     domains[category] = root + "/"
 
     # sort subcategory lists
@@ -402,8 +422,10 @@ def generate_output(columns, categories, domains):
             name = BASE_MAP.get(name) or (name.capitalize() + " Instances")
             append('\n<tr>\n    <td colspan="4"><strong>' +
                    name + '</strong></td>\n</tr>')
+            clist = base.items()
+        else:
+            clist = sorted(base.items(), key=category_key)
 
-        clist = sorted(base.items(), key=category_key)
         for category, subcategories in clist:
             append("<tr>")
             for column in columns:

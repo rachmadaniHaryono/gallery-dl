@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2015-2021 Mike Fährmann
+# Copyright 2015-2022 Mike Fährmann
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as
@@ -50,7 +50,6 @@ modules = [
     "desktopography",
     "deviantart",
     "dynastyscans",
-    "e621",
     "erome",
     "exhentai",
     "fallenangels",
@@ -89,6 +88,7 @@ modules = [
     "khinsider",
     "kohlchan",
     "komikcast",
+    "lightroom",
     "lineblog",
     "livedoor",
     "luscious",
@@ -151,6 +151,7 @@ modules = [
     "vk",
     "vsco",
     "wallhaven",
+    "wallpapercave",
     "warosu",
     "weasyl",
     "webtoons",

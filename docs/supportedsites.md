@@ -386,6 +386,12 @@ Consider all sites to be NSFW unless otherwise known.
     <td></td>
 </tr>
 <tr>
+    <td>Kiss Goddess</td>
+    <td>https://kissgoddess.com/</td>
+    <td>Galleries, Models</td>
+    <td></td>
+</tr>
+<tr>
     <td>Kohlchan</td>
     <td>https://kohlchan.net/</td>
     <td>Boards, Threads</td>
@@ -468,6 +474,12 @@ Consider all sites to be NSFW unless otherwise known.
     <td>https://www.mangoxo.com/</td>
     <td>Albums, Channels</td>
     <td>Supported</td>
+</tr>
+<tr>
+    <td>Mememuseum</td>
+    <td>https://meme.museum/</td>
+    <td>Posts, Tag Searches</td>
+    <td></td>
 </tr>
 <tr>
     <td>My Hentai Gallery</td>
@@ -749,6 +761,12 @@ Consider all sites to be NSFW unless otherwise known.
     <td>Turboimagehost</td>
     <td>https://www.turboimagehost.com/</td>
     <td>individual Images</td>
+    <td></td>
+</tr>
+<tr>
+    <td>Twibooru</td>
+    <td>https://twibooru.org/</td>
+    <td>Galleries, Posts, Search Results</td>
     <td></td>
 </tr>
 <tr>

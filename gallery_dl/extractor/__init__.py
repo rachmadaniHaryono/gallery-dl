@@ -144,6 +144,7 @@ modules = [
     "speakerdeck",
     "subscribestar",
     "tapas",
+    "toyhouse",
     "tsumino",
     "tumblr",
     "tumblrgallery",

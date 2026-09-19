@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.32.13 - 2026-09-19
+### Extractors
+- **Additions**
+  - [coomerfans] add support ([`gh#9502`](https://github.com/mikf/gallery-dl/issues/9502) [`pr#112`](https://codeberg.org/mikf/gallery-dl/pulls/112) [`pr#438`](https://codeberg.org/mikf/gallery-dl/pulls/438))
+- **500px**
+  - update extractors ([`gh#9754`](https://github.com/mikf/gallery-dl/issues/9754))
+- **civitai**
+  - support `model` & `post` collections
+- **dcinside**
+  - extract `board` metadata ([`pr#442`](https://codeberg.org/mikf/gallery-dl/pulls/442))
+  - handle lazy-loaded & single-quoted images ([`pr#443`](https://codeberg.org/mikf/gallery-dl/pulls/443) [`pr#445`](https://codeberg.org/mikf/gallery-dl/pulls/445))
+  - ignore ads ([`pr#444`](https://codeberg.org/mikf/gallery-dl/pulls/444))
+- **directlink**
+  - implement `transform` option
+- **instagram**
+  - fix `redirect` detection during user lookup ([`cb#422`](https://codeberg.org/mikf/gallery-dl/issues/422))
+  - implement setting a `user-cache` expiration time
+- **iwara**
+  - fix downloading `iwara.tv` files on `iwara.ai` and vice versa
+- **mangafire**
+  - extract `chapter_type` & `official` metadata ([`gh#9756`](https://github.com/mikf/gallery-dl/issues/9756))
+- **onlyhaven**
+  - add `expand` option ([`gh#9746`](https://github.com/mikf/gallery-dl/issues/9746))
+  - fix exception when `caption` is `null` ([`pr#441`](https://codeberg.org/mikf/gallery-dl/pulls/441))
+- **pawchive**
+  - add `expand` option
+  - support `deferred` files
+  - add `deferred` option
+  - implement `"deferred": "only"`
+  - provide previews as fallback URLs ([`cb#433`](https://codeberg.org/mikf/gallery-dl/issues/433) [`gh#9727`](https://github.com/mikf/gallery-dl/issues/9727))
+- **xhamster**
+  - fix `gallery` extractor ([`pr#449`](https://codeberg.org/mikf/gallery-dl/pulls/449))
+### Archive
+  - implement `archive-reuse` option ([`pr#434`](https://codeberg.org/mikf/gallery-dl/pulls/434))
+### Path
+  - implement `path-sub` option
+### Utilities
+  - implement `generate_uuid()`
+  - simplify `generate_token()`
+### Miscellaneous
+- implement global `environment` & `environment-expand` options ([`pr#451`](https://codeberg.org/mikf/gallery-dl/pulls/451))
+
 ## 1.32.12 - 2026-09-12
 ### Extractors
 - **Additions**
